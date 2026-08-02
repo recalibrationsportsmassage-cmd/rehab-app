@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#1d2828">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="manifest.webmanifest" id="manifestLink">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recalibration — Program</title>
@@ -38,10 +38,10 @@
     align-items:flex-start;
     justify-content:space-between;
   }
-  .logo{height:26px;margin-bottom:12px;display:block}
+  .logo{height:52px;margin-bottom:14px;display:block}
   .logo-text{
-    font-size:.7rem;text-transform:uppercase;letter-spacing:.18em;
-    color:var(--accent);margin-bottom:8px;display:none;
+    font-size:.85rem;text-transform:uppercase;letter-spacing:.18em;
+    color:var(--accent);margin-bottom:12px;display:none;
   }
   header h1{font-size:1.35rem;font-weight:600;letter-spacing:-.01em}
   header .sub{color:var(--text-dim);font-size:.85rem;margin-top:4px}
@@ -54,7 +54,7 @@
     font-size:.9rem;
     cursor:pointer;
     flex-shrink:0;
-    margin-top:30px;
+    margin-top:56px;
   }
   .controls{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 0}
   select.week{
@@ -93,8 +93,8 @@
   .prog.up .arrow{color:var(--green)}
   .prog.down .arrow{color:var(--red)}
   .prog.flat .arrow,.prog.base .arrow{color:var(--text-dim)}
-  .target{color:var(--text-dim);font-size:.85rem;margin-top:6px}
-  .target b{color:var(--text);font-weight:500}
+  .target{color:var(--text-dim);font-size:.95rem;margin-top:8px;line-height:1.4}
+  .target b{color:var(--text);font-weight:600}
   .row-links{display:flex;gap:8px;margin-top:12px}
   .chip{
     background:var(--surface-2);border:1px solid var(--border);color:var(--text);
@@ -111,7 +111,9 @@
   }
   .cues li::before{content:"–";position:absolute;left:0;color:var(--accent)}
   .sets{border-top:1px solid var(--border);padding:12px 16px 16px}
-  .sets-grid{display:grid;grid-template-columns:44px 1fr 1fr 1fr;gap:8px;align-items:center}
+  .sets-grid{display:grid;gap:8px;align-items:center}
+  .sets-grid.cols3{grid-template-columns:44px 1fr 1fr 1fr}
+  .sets-grid.cols2{grid-template-columns:44px 1fr 1fr}
   .sets-grid .lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);padding-bottom:2px}
   .set-num{font-size:.85rem;color:var(--text-dim)}
   .sets input,.sets select{
@@ -120,12 +122,10 @@
   }
   .sets input:focus,.sets select:focus{outline:none;border-color:var(--accent)}
   .sets select.flag{border-color:var(--red);color:var(--red)}
-  .flag-msg{display:none;margin-top:10px;font-size:.82rem;color:var(--red)}
-  .flag-msg.show{display:block}
   textarea.note{
     width:100%;margin-top:12px;background:var(--bg);border:1px solid var(--border);
     color:var(--text);border-radius:8px;padding:10px;font-size:.9rem;
-    font-family:inherit;resize:vertical;min-height:40px;
+    font-family:inherit;resize:vertical;min-height:52px;
   }
   .save{
     width:100%;margin-top:12px;background:var(--accent);color:#fff;border:none;
@@ -135,9 +135,7 @@
   .card.done .save{background:var(--surface-2);color:var(--green);border:1px solid #3a5a46}
   .err{display:none;margin-top:8px;font-size:.82rem;color:var(--red)}
   .err.show{display:block}
-  .state{
-    text-align:center;color:var(--text-dim);padding:60px 20px;font-size:.95rem;line-height:1.6;
-  }
+  .state{text-align:center;color:var(--text-dim);padding:60px 20px;font-size:.95rem;line-height:1.6}
   .spinner{
     width:26px;height:26px;border:3px solid var(--border);border-top-color:var(--accent);
     border-radius:50%;margin:0 auto 16px;animation:spin .8s linear infinite;
@@ -184,29 +182,49 @@
 <div class="overlay" id="modal">
   <div class="modal">
     <h3>How this works</h3>
-    <p>Use the dropdown at the top to move between weeks. Each exercise shows the sets, reps and intensity Ben has set for you.</p>
-    <p><b>RIR</b> means reps in reserve — how many reps you had left before failure. 0 means you couldn't have done another rep.</p>
-    <p>After each set, log your <b>load</b>, <b>reps</b> and <b>RIR</b>. If your RIR turns red, you had more in the tank than planned — add a little load next set or next session.</p>
-    <p>The badge next to each exercise shows how you're tracking against your first week. Tap it to see the number.</p>
-    <p>Notes are optional, but if something felt off, write it down. Ben reads them.</p>
-    <p>Aim to have everything done by the date shown at the top.</p>
+    <p>Use the dropdown at the top to move between weeks. Each exercise shows the sets, reps and intensity.</p>
+    <p>For some exercises, we'll track intensity as <b>Reps in Reserve (RIR)</b> — how many reps you had left before failure. 0 means you couldn't have done another rep.</p>
+    <p>After each set, log your load, reps and intensity. The badge next to each exercise shows how you're tracking against your first week. Tap it to see the number.</p>
+    <p>Notes are optional, but if something feels better, the same or worse, write it down.</p>
+    <p>Aim to have everything done 12 hours before our follow-up session.</p>
     <button class="save" onclick="closeModal()">Got it</button>
   </div>
 </div>
 
 <script>
 /* ============================================================
-   CONFIG — paste your Apps Script web app URL between the quotes
+   CONFIG — Apps Script web app URL
    ============================================================ */
 const API_URL = "https://script.google.com/macros/s/AKfycbwyQ3RzOItJDLmBTEyGsPx9FKnwoZgkwFxnKn3ekEO-qrTbzjHUYoBEfjZEAQXSgB3f/exec";
 
-let program = null;   // {name, weeks:[{start,end,exercises:[...]}]}
-let baseline = {};    // exercise name -> first week index it appears
+let program = null;
+let baseline = {};
 
 function slug(){
-  let s = (location.hash.replace(/^#\/?/,"") || new URLSearchParams(location.search).get("c") || "").trim();
-  if(s){ localStorage.setItem("lastClient", s); return s; }
-  return localStorage.getItem("lastClient") || "";
+  const fromUrl = (location.hash.replace(/^#\/?/,"") ||
+                   new URLSearchParams(location.search).get("c") || "").trim().toLowerCase();
+  if(fromUrl){ try{ localStorage.setItem("lastClient", fromUrl); }catch(e){} return fromUrl; }
+  try{ return localStorage.getItem("lastClient") || ""; }catch(e){ return ""; }
+}
+
+/* Keep the client in the URL and in the manifest, so launching from the
+   home screen always lands on the right program. */
+function pinClient(c){
+  if(!c) return;
+  if(location.hash !== "#/"+c){
+    history.replaceState(null,"","#/"+c);
+  }
+  try{
+    const mf = {
+      name:"Recalibration Program", short_name:"Recalibration",
+      start_url:"./#/"+c, scope:"./", display:"standalone",
+      background_color:"#1d2828", theme_color:"#1d2828",
+      icons:[{src:"icon-192.png",sizes:"192x192",type:"image/png"},
+             {src:"icon-512.png",sizes:"512x512",type:"image/png"}]
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:"application/manifest+json"}));
+    document.getElementById("manifestLink").setAttribute("href",url);
+  }catch(e){}
 }
 
 const fmt = d => new Date(d+"T00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});
@@ -216,8 +234,8 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">"
 async function load(){
   const c = slug();
   const box = document.getElementById("stateBox");
-  if(!c){ box.innerHTML = "This link isn't complete.<br>Use the link Ben sent you."; return; }
-  if(API_URL.startsWith("PASTE")){ box.innerHTML = "App isn't connected to the sheet yet."; return; }
+  if(!c){ box.innerHTML = "This link isn't complete.<br>Open the link Ben sent you, then save it again."; return; }
+  pinClient(c);
   try{
     const r = await fetch(API_URL + "?client=" + encodeURIComponent(c));
     const data = await r.json();
@@ -225,14 +243,13 @@ async function load(){
     program = data;
     init();
   }catch(e){
-    box.innerHTML = "Couldn't load your program.<br>Check your connection and pull down to refresh.";
+    box.innerHTML = "Couldn't load your program.<br>Check your connection and try again.";
   }
 }
 
 function init(){
   document.getElementById("clientName").textContent = program.name;
   document.title = program.name.split(" ")[0] + " — Recalibration";
-  // weeks sorted by start date; label Week 1..N
   program.weeks.sort((a,b)=> a.start < b.start ? -1 : 1);
   baseline = {};
   program.weeks.forEach((w,wi)=> w.exercises.forEach(ex=>{
@@ -241,38 +258,81 @@ function init(){
   const sel = document.getElementById("weekSelect");
   sel.innerHTML = program.weeks.map((w,i)=>
     '<option value="'+i+'">Week '+(i+1)+' · '+fmtShort(w.start)+'</option>').join("");
-  // default to current week: latest week whose start <= today
-  const today = new Date().toISOString().slice(0,10);
-  let cur = 0;
-  program.weeks.forEach((w,i)=>{ if(w.start <= today) cur = i; });
-  sel.value = cur;
+  // default to the most recent week
+  sel.value = program.weeks.length - 1;
   document.getElementById("stateBox").style.display = "none";
   document.getElementById("controls").style.display = "block";
   renderWeek();
-  if(!localStorage.getItem("seenIntro")){ openModal(); localStorage.setItem("seenIntro","1"); }
+  try{
+    if(!localStorage.getItem("seenIntro")){ openModal(); localStorage.setItem("seenIntro","1"); }
+  }catch(e){}
 }
 
-function volume(logged){
-  // sum of load*reps; falls back to total reps for unloaded work
-  let vol=0, reps=0, hasLoad=false;
-  logged.forEach(s=>{
+/* ---------- reps / summary line ---------- */
+function repsLabel(ex){
+  const v = (ex.reps||"").trim();
+  if(!v) return "";
+  const unit = (ex.unit||"").toLowerCase();
+  const side = ex.perSide ? " each side" : "";
+  const isNumeric = /^\d+(\s*[-–]\s*\d+)?$/.test(v);
+  if(unit.indexOf("sec")===0){
+    return "<b>"+esc(v)+"s</b>"+side;
+  }
+  if(unit.indexOf("min")===0){
+    const plural = v==="1" ? " min" : " mins";
+    return "<b>"+esc(v)+plural+"</b>"+side;
+  }
+  if(unit.indexOf("rep")===0 || (!unit && isNumeric)){
+    return "<b>"+esc(v.replace(/\s*-\s*/,"–"))+"</b> reps"+side;
+  }
+  // free text / description — show as written, no hardcoded "reps"
+  return "<b>"+esc(v)+"</b>"+side;
+}
+
+function targetLabel(ex){
+  const t=(ex.target||"").trim();
+  if(!t) return "";
+  if(/RIR/i.test(t)) return "<b>"+esc(t)+"</b>";      // already reads "1 RIR"
+  return "<b>"+esc(t)+"</b> intensity";               // Low / Mod
+}
+
+function summaryLine(ex){
+  const bits=[];
+  if(ex.sets) bits.push("<b>"+ex.sets+" set"+(ex.sets>1?"s":"")+"</b>");
+  const r=repsLabel(ex); if(r) bits.push(r);
+  const t=targetLabel(ex); if(t) bits.push(t);
+  return bits.join(" · ");
+}
+
+/* ---------- progress ---------- */
+function perSetVolume(logged, sets){
+  // average work per set, so weeks with different set counts compare fairly
+  let vol=0, reps=0, hasLoad=false, n=0;
+  for(let i=0;i<sets;i++){
+    const s=logged[i]; if(!s) continue;
     const l=parseFloat(s[0])||0, r=parseFloat(s[1])||0;
     if(l>0) hasLoad=true;
-    vol += l*r; reps += r;
-  });
-  return hasLoad ? vol : reps;
+    vol+=l*r; reps+=r; n++;
+  }
+  if(!n) return 0;
+  return (hasLoad ? vol : reps) / n;
 }
 
-function loggedComplete(logged, sets){
-  if(!logged) return false;
-  for(let i=0;i<sets;i++){
-    if(!logged[i] || logged[i][0]==="" || logged[i][1]==="" || logged[i][2]==="") return false;
+function loggedComplete(ex){
+  const n=ex.sets||1;
+  if(!ex.logged) return false;
+  for(let i=0;i<n;i++){
+    const s=ex.logged[i];
+    if(!s) return false;
+    if(s[1]==="" || s[2]==="") return false;              // reps + intensity always required
+    if(ex.type!=="mobility" && s[0]==="") return false;    // load only for strength
   }
   return true;
 }
 
-function targetRir(target){
-  const m = /(\d+)\s*RIR/i.exec(target||"");
+function targetRir(ex){
+  if(ex.type==="mobility") return null;
+  const m=/(\d+)\s*RIR/i.exec(ex.target||"");
   return m ? +m[1] : null;
 }
 
@@ -287,27 +347,22 @@ function renderWeek(){
 }
 
 function progBadge(ex,wi){
-  const el = document.createElement("div");
-  el.className = "prog";
+  const el=document.createElement("div");
+  el.className="prog";
   let arrow="–", label="Progress", val="";
-  const isBase = baseline[ex.name] === wi;
+  const isBase = baseline[ex.name]===wi;
   if(isBase){ el.classList.add("base"); arrow="•"; label="Week 1"; val="Baseline"; }
   else{
-    // find baseline logged data for this exercise
-    const bw = program.weeks[baseline[ex.name]];
-    const bx = bw.exercises.find(e=>e.name===ex.name);
-    const baseDone = bx && loggedComplete(bx.logged, bx.sets);
-    const curDone = loggedComplete(ex.logged, ex.sets);
-    if(baseDone && curDone){
-      const bv = volume(bx.logged), cv = volume(ex.logged);
-      const pct = bv>0 ? Math.round((cv-bv)/bv*100) : 0;
+    const bw=program.weeks[baseline[ex.name]];
+    const bx=bw.exercises.find(e=>e.name===ex.name);
+    if(bx && loggedComplete(bx) && loggedComplete(ex)){
+      const bv=perSetVolume(bx.logged,bx.sets), cv=perSetVolume(ex.logged,ex.sets);
+      const pct=bv>0?Math.round((cv-bv)/bv*100):0;
       if(pct>0){el.classList.add("up");arrow="▲";}
       else if(pct<0){el.classList.add("down");arrow="▼";}
       else{el.classList.add("flat");arrow="–";}
       val=(pct>0?"+":"")+pct+"% vs week 1";
-    }else{
-      el.classList.add("flat"); val="Not logged yet";
-    }
+    }else{ el.classList.add("flat"); val="Not logged yet"; }
   }
   el.innerHTML='<span class="arrow">'+arrow+'</span><span class="txt">'+label+'</span>';
   let showing=false;
@@ -316,29 +371,35 @@ function progBadge(ex,wi){
 }
 
 function card(ex,wi){
+  const isMob = ex.type==="mobility";
   const c=document.createElement("div"); c.className="card";
   const head=document.createElement("div"); head.className="card-head";
   const titleRow=document.createElement("div"); titleRow.className="card-title";
   titleRow.innerHTML="<h2></h2>";
   titleRow.querySelector("h2").textContent=ex.name;
-  titleRow.appendChild(progBadge(ex,wi));
+  if(!isMob) titleRow.appendChild(progBadge(ex,wi));   // no week-on-week for mobility
   head.appendChild(titleRow);
+
   const t=document.createElement("div"); t.className="target";
-  const bits=[];
-  if(ex.sets) bits.push("<b>"+ex.sets+" set"+(ex.sets>1?"s":"")+"</b>");
-  if(ex.reps) bits.push("<b>"+esc(ex.reps)+"</b> reps");
-  if(ex.target) bits.push("<b>"+esc(ex.target)+"</b>");
-  t.innerHTML=bits.join(" · ");
+  t.innerHTML=summaryLine(ex);
   head.appendChild(t);
+
   const links=document.createElement("div"); links.className="row-links";
   const hasCues = ex.cues && ex.cues.length;
+  let cues=null;
   if(hasCues){
     const cueBtn=document.createElement("button"); cueBtn.className="chip"; cueBtn.textContent="Cues";
     links.appendChild(cueBtn);
-    var cues=document.createElement("div"); cues.className="cues";
-    cues.innerHTML="<ul>"+ex.cues.map(x=>{const li=document.createElement("li");li.textContent=x;return li.outerHTML;}).join("")+"</ul>"+
-      (ex.video?'<a class="chip video" style="margin-top:10px" target="_blank" rel="noopener"></a>':"");
-    if(ex.video){const a=cues.querySelector("a");a.href=ex.video;a.textContent="▶ Watch the demo";}
+    cues=document.createElement("div"); cues.className="cues";
+    const ul=document.createElement("ul");
+    ex.cues.forEach(x=>{const li=document.createElement("li");li.textContent=x;ul.appendChild(li);});
+    cues.appendChild(ul);
+    if(ex.video){
+      const a=document.createElement("a");
+      a.className="chip video"; a.style.marginTop="10px"; a.target="_blank"; a.rel="noopener";
+      a.href=ex.video; a.textContent="▶ Watch the demo";
+      cues.appendChild(a);
+    }
     cueBtn.onclick=()=>cues.classList.toggle("open");
   }
   if(ex.video){
@@ -348,64 +409,101 @@ function card(ex,wi){
   }
   if(links.children.length) head.appendChild(links);
   c.appendChild(head);
-  if(hasCues) c.appendChild(cues);
+  if(cues) c.appendChild(cues);
 
+  // ---- logging ----
   const sets=document.createElement("div"); sets.className="sets";
-  const grid=document.createElement("div"); grid.className="sets-grid";
-  grid.innerHTML='<div class="lbl"></div><div class="lbl">Load (kg)</div><div class="lbl">Reps</div><div class="lbl">RIR</div>';
-  const tRir=targetRir(ex.target);
+  const grid=document.createElement("div");
+  grid.className="sets-grid "+(isMob?"cols2":"cols3");
+
+  const repsHeading = (ex.unit||"").toLowerCase().indexOf("sec")===0 ? "Time (s)"
+                    : (ex.unit||"").toLowerCase().indexOf("min")===0 ? "Time (min)"
+                    : "Reps";
+  grid.innerHTML = '<div class="lbl"></div>' +
+    (isMob?"":'<div class="lbl">Load (kg)</div>') +
+    '<div class="lbl">'+repsHeading+'</div><div class="lbl">Intensity</div>';
+
+  const tRir=targetRir(ex);
   const inputs=[];
-  const flagMsg=document.createElement("div"); flagMsg.className="flag-msg";
-  flagMsg.textContent="You had more in the tank than planned — add a little load.";
   const n=ex.sets||1;
   for(let s=0;s<n;s++){
     const num=document.createElement("div"); num.className="set-num"; num.textContent="Set "+(s+1);
-    const load=document.createElement("input"); load.type="number"; load.inputMode="decimal"; load.placeholder="–"; load.min="0";
-    const reps=document.createElement("input"); reps.type="number"; reps.inputMode="numeric"; reps.placeholder="–"; reps.min="0";
-    const rir=document.createElement("select");
-    rir.innerHTML='<option value="">–</option>'+[0,1,2,3,4,5].map(x=>'<option>'+x+'</option>').join("");
-    if(ex.logged && ex.logged[s]){
-      load.value=ex.logged[s][0]; reps.value=ex.logged[s][1]; rir.value=ex.logged[s][2];
+    grid.appendChild(num);
+
+    let load=null;
+    if(!isMob){
+      load=document.createElement("input");
+      load.type="number"; load.inputMode="decimal"; load.placeholder="–"; load.min="0";
+      grid.appendChild(load);
     }
-    grid.append(num,load,reps,rir);
-    inputs.push({load,reps,rir});
-    const check=()=>{
-      if(tRir!==null && rir.value!=="" && +rir.value>tRir) rir.classList.add("flag");
-      else rir.classList.remove("flag");
-      flagMsg.classList.toggle("show", inputs.some(x=>x.rir.classList.contains("flag")));
-    };
-    rir.onchange=check; check();
+    const reps=document.createElement("input");
+    reps.type="number"; reps.inputMode="numeric"; reps.placeholder="–"; reps.min="0";
+    grid.appendChild(reps);
+
+    const inten=document.createElement("select");
+    if(isMob){
+      inten.innerHTML='<option value="">–</option><option>Low</option><option>Mod</option>';
+    }else{
+      inten.innerHTML='<option value="">–</option>'+
+        [0,1,2,3,4,5].map(x=>'<option value="'+x+'">'+x+' RIR</option>').join("");
+    }
+    grid.appendChild(inten);
+
+    if(ex.logged && ex.logged[s]){
+      if(load) load.value=ex.logged[s][0];
+      reps.value=ex.logged[s][1];
+      inten.value=ex.logged[s][2];
+    }
+    inputs.push({load,reps,inten});
+
+    if(tRir!==null){
+      const check=()=>{
+        if(inten.value!=="" && +inten.value>tRir) inten.classList.add("flag");
+        else inten.classList.remove("flag");
+      };
+      inten.onchange=check; check();
+    }
   }
   sets.appendChild(grid);
-  sets.appendChild(flagMsg);
 
   const note=document.createElement("textarea"); note.className="note";
-  note.placeholder="Note for Ben (optional)";
+  note.placeholder="Note for Ben (optional) — how did pain and movement feel?";
   if(ex.note) note.value=ex.note;
   sets.appendChild(note);
 
   const err=document.createElement("div"); err.className="err";
-  err.textContent="Fill in load, reps and RIR for every set first.";
   const btn=document.createElement("button"); btn.className="save";
-  const already=loggedComplete(ex.logged,n);
+  const already=loggedComplete(ex);
   btn.textContent=already?"Update":"Mark complete";
   if(already) c.classList.add("done");
+
   btn.onclick=async()=>{
-    const missing=inputs.some(x=>x.load.value===""||x.reps.value===""||x.rir.value==="");
-    if(missing){err.textContent="Fill in load, reps and RIR for every set first.";err.classList.add("show");return;}
+    const missing=inputs.some(x=>
+      x.reps.value==="" || x.inten.value==="" || (x.load && x.load.value===""));
+    if(missing){
+      err.textContent = isMob
+        ? "Fill in every box for each set first."
+        : "Fill in load, reps and intensity for every set first.";
+      err.classList.add("show"); return;
+    }
     err.classList.remove("show");
     btn.disabled=true; btn.textContent="Saving…";
-    const logged=inputs.map(x=>[x.load.value,x.reps.value,x.rir.value]);
-    // progress string for the sheet
+    const logged=inputs.map(x=>[x.load?x.load.value:"", x.reps.value, x.inten.value]);
+
     let progress="";
-    const bw=program.weeks[baseline[ex.name]];
-    const bx=bw.exercises.find(e=>e.name===ex.name);
-    if(baseline[ex.name]===wi) progress="baseline";
-    else if(bx && loggedComplete(bx.logged,bx.sets)){
-      const bv=volume(bx.logged), cv=volume(logged);
-      const pct=bv>0?Math.round((cv-bv)/bv*100):0;
-      progress=(pct>0?"+":"")+pct+"%";
+    if(!isMob){
+      if(baseline[ex.name]===wi) progress="baseline";
+      else{
+        const bx=program.weeks[baseline[ex.name]].exercises.find(e=>e.name===ex.name);
+        if(bx && loggedComplete(bx)){
+          const bv=perSetVolume(bx.logged,bx.sets);
+          const cv=perSetVolume(logged,logged.length);
+          const pct=bv>0?Math.round((cv-bv)/bv*100):0;
+          progress=(pct>0?"+":"")+pct+"%";
+        }
+      }
     }
+
     try{
       const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain"},
         body:JSON.stringify({client:slug(),row:ex.row,sets:logged,note:note.value.trim(),progress})});
@@ -415,8 +513,8 @@ function card(ex,wi){
       c.classList.add("done");
       btn.textContent="✓ Saved"; btn.disabled=false;
       setTimeout(()=>{btn.textContent="Update";},1500);
-      // refresh badge
-      titleRow.replaceChild(progBadge(ex,wi),titleRow.querySelector(".prog"));
+      const oldBadge=titleRow.querySelector(".prog");
+      if(oldBadge) titleRow.replaceChild(progBadge(ex,wi),oldBadge);
     }catch(e){
       btn.disabled=false; btn.textContent=already?"Update":"Mark complete";
       err.textContent="Couldn't save. Check your connection and try again.";
