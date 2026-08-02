@@ -4,7 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#1d2828">
-<link rel="manifest" href="manifest.webmanifest" id="manifestLink">
+<!-- No <link rel="manifest"> on purpose: a manifest forces iOS to launch at
+     start_url, which drops the #/client part of the link. These meta tags give
+     a standalone app that opens at whatever URL was saved. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Recalibration">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recalibration — Program</title>
@@ -117,8 +123,19 @@
   .sets-grid .lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);padding-bottom:2px}
   .set-num{font-size:.85rem;color:var(--text-dim)}
   .sets input,.sets select{
-    width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
-    border-radius:8px;padding:10px 8px;font-size:.95rem;text-align:center;
+    width:100%;min-width:0;background:var(--bg);border:1px solid var(--border);
+    color:var(--text);border-radius:8px;padding:10px 8px;font-size:.95rem;
+    text-align:center;font-family:inherit;
+  }
+  /* Safari sizes a <select> to its widest option instead of filling the grid
+     track, so force it to fill and draw our own arrow with room to breathe. */
+  .sets select{
+    appearance:none;-webkit-appearance:none;
+    text-align:left;text-align-last:center;
+    padding-right:26px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a5a5' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 9px center;
   }
   .sets input:focus,.sets select:focus{outline:none;border-color:var(--accent)}
   .sets select.flag{border-color:var(--red);color:var(--red)}
@@ -207,24 +224,13 @@ function slug(){
   try{ return localStorage.getItem("lastClient") || ""; }catch(e){ return ""; }
 }
 
-/* Keep the client in the URL and in the manifest, so launching from the
-   home screen always lands on the right program. */
+/* Make sure the client is in the address bar before anyone saves the page,
+   so the home-screen shortcut carries it. */
 function pinClient(c){
   if(!c) return;
   if(location.hash !== "#/"+c){
     history.replaceState(null,"","#/"+c);
   }
-  try{
-    const mf = {
-      name:"Recalibration Program", short_name:"Recalibration",
-      start_url:"./#/"+c, scope:"./", display:"standalone",
-      background_color:"#1d2828", theme_color:"#1d2828",
-      icons:[{src:"icon-192.png",sizes:"192x192",type:"image/png"},
-             {src:"icon-512.png",sizes:"512x512",type:"image/png"}]
-    };
-    const url = URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:"application/manifest+json"}));
-    document.getElementById("manifestLink").setAttribute("href",url);
-  }catch(e){}
 }
 
 const fmt = d => new Date(d+"T00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});
@@ -467,7 +473,7 @@ function card(ex,wi){
   sets.appendChild(grid);
 
   const note=document.createElement("textarea"); note.className="note";
-  note.placeholder="Note for Ben (optional) — how did pain and movement feel?";
+  note.placeholder="Note for Ben (optional)";
   if(ex.note) note.value=ex.note;
   sets.appendChild(note);
 
