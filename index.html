@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1d2828">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Recalibration — Program</title>
+<style>
+  :root{
+    --bg:#1d2828;
+    --surface:#243131;
+    --surface-2:#2b3a3a;
+    --border:#3b4d4d;
+    --text:#d5dddd;
+    --text-dim:#94a5a5;
+    --accent:#c25b41;
+    --red:#ff6b6b;
+    --green:#5fbd7d;
+    --radius:12px;
+    font-size:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    max-width:520px;
+    margin:0 auto;
+    padding:0 16px 80px;
+  }
+  header{
+    padding:24px 0 8px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+  }
+  .logo{height:26px;margin-bottom:12px;display:block}
+  .logo-text{
+    font-size:.7rem;text-transform:uppercase;letter-spacing:.18em;
+    color:var(--accent);margin-bottom:8px;display:none;
+  }
+  header h1{font-size:1.35rem;font-weight:600;letter-spacing:-.01em}
+  header .sub{color:var(--text-dim);font-size:.85rem;margin-top:4px}
+  .info-btn{
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    width:34px;height:34px;
+    border-radius:50%;
+    font-size:.9rem;
+    cursor:pointer;
+    flex-shrink:0;
+    margin-top:30px;
+  }
+  .controls{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 0}
+  select.week{
+    width:100%;
+    background:var(--surface);
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:12px 14px;
+    font-size:1rem;
+    appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a5a5' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 14px center;
+  }
+  .due{color:var(--text-dim);font-size:.85rem;margin:10px 2px 4px}
+  .due strong{color:var(--text);font-weight:500}
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    margin-top:14px;
+    overflow:hidden;
+  }
+  .card.done{border-color:#3a5a46}
+  .card-head{padding:16px 16px 12px}
+  .card-title{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .card-title h2{font-size:1.02rem;font-weight:600;line-height:1.3}
+  .prog{
+    flex-shrink:0;display:flex;align-items:center;gap:5px;
+    font-size:.8rem;color:var(--text-dim);
+    background:var(--surface-2);border:1px solid var(--border);
+    border-radius:20px;padding:4px 10px;cursor:pointer;user-select:none;
+  }
+  .prog .arrow{font-size:.75rem}
+  .prog.up .arrow{color:var(--green)}
+  .prog.down .arrow{color:var(--red)}
+  .prog.flat .arrow,.prog.base .arrow{color:var(--text-dim)}
+  .target{color:var(--text-dim);font-size:.85rem;margin-top:6px}
+  .target b{color:var(--text);font-weight:500}
+  .row-links{display:flex;gap:8px;margin-top:12px}
+  .chip{
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:8px 12px;font-size:.85rem;cursor:pointer;
+    text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+  }
+  .chip.video{color:var(--accent)}
+  .cues{display:none;border-top:1px solid var(--border);padding:14px 16px;background:var(--surface-2)}
+  .cues.open{display:block}
+  .cues ul{list-style:none}
+  .cues li{
+    font-size:.88rem;color:var(--text-dim);line-height:1.5;
+    padding:3px 0 3px 14px;position:relative;
+  }
+  .cues li::before{content:"–";position:absolute;left:0;color:var(--accent)}
+  .sets{border-top:1px solid var(--border);padding:12px 16px 16px}
+  .sets-grid{display:grid;grid-template-columns:44px 1fr 1fr 1fr;gap:8px;align-items:center}
+  .sets-grid .lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);padding-bottom:2px}
+  .set-num{font-size:.85rem;color:var(--text-dim)}
+  .sets input,.sets select{
+    width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:10px 8px;font-size:.95rem;text-align:center;
+  }
+  .sets input:focus,.sets select:focus{outline:none;border-color:var(--accent)}
+  .sets select.flag{border-color:var(--red);color:var(--red)}
+  .flag-msg{display:none;margin-top:10px;font-size:.82rem;color:var(--red)}
+  .flag-msg.show{display:block}
+  textarea.note{
+    width:100%;margin-top:12px;background:var(--bg);border:1px solid var(--border);
+    color:var(--text);border-radius:8px;padding:10px;font-size:.9rem;
+    font-family:inherit;resize:vertical;min-height:40px;
+  }
+  .save{
+    width:100%;margin-top:12px;background:var(--accent);color:#fff;border:none;
+    border-radius:8px;padding:12px;font-size:.95rem;font-weight:600;cursor:pointer;
+  }
+  .save:disabled{opacity:.6}
+  .card.done .save{background:var(--surface-2);color:var(--green);border:1px solid #3a5a46}
+  .err{display:none;margin-top:8px;font-size:.82rem;color:var(--red)}
+  .err.show{display:block}
+  .state{
+    text-align:center;color:var(--text-dim);padding:60px 20px;font-size:.95rem;line-height:1.6;
+  }
+  .spinner{
+    width:26px;height:26px;border:3px solid var(--border);border-top-color:var(--accent);
+    border-radius:50%;margin:0 auto 16px;animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);
+    z-index:20;align-items:flex-end;justify-content:center;
+  }
+  .overlay.open{display:flex}
+  .modal{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:16px 16px 0 0;max-width:520px;width:100%;
+    padding:24px 20px 32px;max-height:80vh;overflow-y:auto;
+  }
+  .modal h3{font-size:1.1rem;margin-bottom:14px}
+  .modal p{font-size:.9rem;color:var(--text-dim);line-height:1.55;margin-bottom:10px}
+  .modal p b{color:var(--text);font-weight:500}
+  .modal .save{margin-top:16px}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <img class="logo" alt="Recalibration"
+      src="https://images.squarespace-cdn.com/content/v1/66d2a42747a32424bfaefbe7/834960fe-960a-4402-bd41-5b6042b762c9/Recalibration-logo-white.png?format=500w"
+      onerror="this.style.display='none';document.querySelector('.logo-text').style.display='block'">
+    <div class="logo-text">Recalibration</div>
+    <h1 id="clientName">&nbsp;</h1>
+    <div class="sub">Your program</div>
+  </div>
+  <button class="info-btn" onclick="openModal()">i</button>
+</header>
+
+<div class="controls" id="controls" style="display:none">
+  <select class="week" id="weekSelect" onchange="renderWeek()"></select>
+  <div class="due" id="dueLine"></div>
+</div>
+
+<div id="stateBox" class="state"><div class="spinner"></div>Loading your program…</div>
+<div id="exerciseList"></div>
+
+<div class="overlay" id="modal">
+  <div class="modal">
+    <h3>How this works</h3>
+    <p>Use the dropdown at the top to move between weeks. Each exercise shows the sets, reps and intensity Ben has set for you.</p>
+    <p><b>RIR</b> means reps in reserve — how many reps you had left before failure. 0 means you couldn't have done another rep.</p>
+    <p>After each set, log your <b>load</b>, <b>reps</b> and <b>RIR</b>. If your RIR turns red, you had more in the tank than planned — add a little load next set or next session.</p>
+    <p>The badge next to each exercise shows how you're tracking against your first week. Tap it to see the number.</p>
+    <p>Notes are optional, but if something felt off, write it down. Ben reads them.</p>
+    <p>Aim to have everything done by the date shown at the top.</p>
+    <button class="save" onclick="closeModal()">Got it</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — paste your Apps Script web app URL between the quotes
+   ============================================================ */
+const API_URL = "https://script.google.com/macros/s/AKfycbwyQ3RzOItJDLmBTEyGsPx9FKnwoZgkwFxnKn3ekEO-qrTbzjHUYoBEfjZEAQXSgB3f/exec";
+
+let program = null;   // {name, weeks:[{start,end,exercises:[...]}]}
+let baseline = {};    // exercise name -> first week index it appears
+
+function slug(){
+  let s = (location.hash.replace(/^#\/?/,"") || new URLSearchParams(location.search).get("c") || "").trim();
+  if(s){ localStorage.setItem("lastClient", s); return s; }
+  return localStorage.getItem("lastClient") || "";
+}
+
+const fmt = d => new Date(d+"T00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});
+const fmtShort = d => new Date(d+"T00:00").toLocaleDateString("en-AU",{day:"numeric",month:"short"});
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+async function load(){
+  const c = slug();
+  const box = document.getElementById("stateBox");
+  if(!c){ box.innerHTML = "This link isn't complete.<br>Use the link Ben sent you."; return; }
+  if(API_URL.startsWith("PASTE")){ box.innerHTML = "App isn't connected to the sheet yet."; return; }
+  try{
+    const r = await fetch(API_URL + "?client=" + encodeURIComponent(c));
+    const data = await r.json();
+    if(data.error){ box.innerHTML = "Couldn't find your program.<br>Check the link Ben sent you."; return; }
+    program = data;
+    init();
+  }catch(e){
+    box.innerHTML = "Couldn't load your program.<br>Check your connection and pull down to refresh.";
+  }
+}
+
+function init(){
+  document.getElementById("clientName").textContent = program.name;
+  document.title = program.name.split(" ")[0] + " — Recalibration";
+  // weeks sorted by start date; label Week 1..N
+  program.weeks.sort((a,b)=> a.start < b.start ? -1 : 1);
+  baseline = {};
+  program.weeks.forEach((w,wi)=> w.exercises.forEach(ex=>{
+    if(!(ex.name in baseline)) baseline[ex.name] = wi;
+  }));
+  const sel = document.getElementById("weekSelect");
+  sel.innerHTML = program.weeks.map((w,i)=>
+    '<option value="'+i+'">Week '+(i+1)+' · '+fmtShort(w.start)+'</option>').join("");
+  // default to current week: latest week whose start <= today
+  const today = new Date().toISOString().slice(0,10);
+  let cur = 0;
+  program.weeks.forEach((w,i)=>{ if(w.start <= today) cur = i; });
+  sel.value = cur;
+  document.getElementById("stateBox").style.display = "none";
+  document.getElementById("controls").style.display = "block";
+  renderWeek();
+  if(!localStorage.getItem("seenIntro")){ openModal(); localStorage.setItem("seenIntro","1"); }
+}
+
+function volume(logged){
+  // sum of load*reps; falls back to total reps for unloaded work
+  let vol=0, reps=0, hasLoad=false;
+  logged.forEach(s=>{
+    const l=parseFloat(s[0])||0, r=parseFloat(s[1])||0;
+    if(l>0) hasLoad=true;
+    vol += l*r; reps += r;
+  });
+  return hasLoad ? vol : reps;
+}
+
+function loggedComplete(logged, sets){
+  if(!logged) return false;
+  for(let i=0;i<sets;i++){
+    if(!logged[i] || logged[i][0]==="" || logged[i][1]==="" || logged[i][2]==="") return false;
+  }
+  return true;
+}
+
+function targetRir(target){
+  const m = /(\d+)\s*RIR/i.exec(target||"");
+  return m ? +m[1] : null;
+}
+
+function renderWeek(){
+  const wi = +document.getElementById("weekSelect").value;
+  const wk = program.weeks[wi];
+  document.getElementById("dueLine").innerHTML =
+    wk.end ? "Complete by <strong>"+fmt(wk.end)+"</strong>" : "";
+  const list = document.getElementById("exerciseList");
+  list.innerHTML = "";
+  wk.exercises.forEach(ex=>list.appendChild(card(ex,wi)));
+}
+
+function progBadge(ex,wi){
+  const el = document.createElement("div");
+  el.className = "prog";
+  let arrow="–", label="Progress", val="";
+  const isBase = baseline[ex.name] === wi;
+  if(isBase){ el.classList.add("base"); arrow="•"; label="Week 1"; val="Baseline"; }
+  else{
+    // find baseline logged data for this exercise
+    const bw = program.weeks[baseline[ex.name]];
+    const bx = bw.exercises.find(e=>e.name===ex.name);
+    const baseDone = bx && loggedComplete(bx.logged, bx.sets);
+    const curDone = loggedComplete(ex.logged, ex.sets);
+    if(baseDone && curDone){
+      const bv = volume(bx.logged), cv = volume(ex.logged);
+      const pct = bv>0 ? Math.round((cv-bv)/bv*100) : 0;
+      if(pct>0){el.classList.add("up");arrow="▲";}
+      else if(pct<0){el.classList.add("down");arrow="▼";}
+      else{el.classList.add("flat");arrow="–";}
+      val=(pct>0?"+":"")+pct+"% vs week 1";
+    }else{
+      el.classList.add("flat"); val="Not logged yet";
+    }
+  }
+  el.innerHTML='<span class="arrow">'+arrow+'</span><span class="txt">'+label+'</span>';
+  let showing=false;
+  el.onclick=()=>{showing=!showing;el.querySelector(".txt").textContent=showing?val:label;};
+  return el;
+}
+
+function card(ex,wi){
+  const c=document.createElement("div"); c.className="card";
+  const head=document.createElement("div"); head.className="card-head";
+  const titleRow=document.createElement("div"); titleRow.className="card-title";
+  titleRow.innerHTML="<h2></h2>";
+  titleRow.querySelector("h2").textContent=ex.name;
+  titleRow.appendChild(progBadge(ex,wi));
+  head.appendChild(titleRow);
+  const t=document.createElement("div"); t.className="target";
+  const bits=[];
+  if(ex.sets) bits.push("<b>"+ex.sets+" set"+(ex.sets>1?"s":"")+"</b>");
+  if(ex.reps) bits.push("<b>"+esc(ex.reps)+"</b> reps");
+  if(ex.target) bits.push("<b>"+esc(ex.target)+"</b>");
+  t.innerHTML=bits.join(" · ");
+  head.appendChild(t);
+  const links=document.createElement("div"); links.className="row-links";
+  const hasCues = ex.cues && ex.cues.length;
+  if(hasCues){
+    const cueBtn=document.createElement("button"); cueBtn.className="chip"; cueBtn.textContent="Cues";
+    links.appendChild(cueBtn);
+    var cues=document.createElement("div"); cues.className="cues";
+    cues.innerHTML="<ul>"+ex.cues.map(x=>{const li=document.createElement("li");li.textContent=x;return li.outerHTML;}).join("")+"</ul>"+
+      (ex.video?'<a class="chip video" style="margin-top:10px" target="_blank" rel="noopener"></a>':"");
+    if(ex.video){const a=cues.querySelector("a");a.href=ex.video;a.textContent="▶ Watch the demo";}
+    cueBtn.onclick=()=>cues.classList.toggle("open");
+  }
+  if(ex.video){
+    const v=document.createElement("a"); v.className="chip video"; v.href=ex.video;
+    v.target="_blank"; v.rel="noopener"; v.textContent="▶ Watch";
+    links.appendChild(v);
+  }
+  if(links.children.length) head.appendChild(links);
+  c.appendChild(head);
+  if(hasCues) c.appendChild(cues);
+
+  const sets=document.createElement("div"); sets.className="sets";
+  const grid=document.createElement("div"); grid.className="sets-grid";
+  grid.innerHTML='<div class="lbl"></div><div class="lbl">Load (kg)</div><div class="lbl">Reps</div><div class="lbl">RIR</div>';
+  const tRir=targetRir(ex.target);
+  const inputs=[];
+  const flagMsg=document.createElement("div"); flagMsg.className="flag-msg";
+  flagMsg.textContent="You had more in the tank than planned — add a little load.";
+  const n=ex.sets||1;
+  for(let s=0;s<n;s++){
+    const num=document.createElement("div"); num.className="set-num"; num.textContent="Set "+(s+1);
+    const load=document.createElement("input"); load.type="number"; load.inputMode="decimal"; load.placeholder="–"; load.min="0";
+    const reps=document.createElement("input"); reps.type="number"; reps.inputMode="numeric"; reps.placeholder="–"; reps.min="0";
+    const rir=document.createElement("select");
+    rir.innerHTML='<option value="">–</option>'+[0,1,2,3,4,5].map(x=>'<option>'+x+'</option>').join("");
+    if(ex.logged && ex.logged[s]){
+      load.value=ex.logged[s][0]; reps.value=ex.logged[s][1]; rir.value=ex.logged[s][2];
+    }
+    grid.append(num,load,reps,rir);
+    inputs.push({load,reps,rir});
+    const check=()=>{
+      if(tRir!==null && rir.value!=="" && +rir.value>tRir) rir.classList.add("flag");
+      else rir.classList.remove("flag");
+      flagMsg.classList.toggle("show", inputs.some(x=>x.rir.classList.contains("flag")));
+    };
+    rir.onchange=check; check();
+  }
+  sets.appendChild(grid);
+  sets.appendChild(flagMsg);
+
+  const note=document.createElement("textarea"); note.className="note";
+  note.placeholder="Note for Ben (optional)";
+  if(ex.note) note.value=ex.note;
+  sets.appendChild(note);
+
+  const err=document.createElement("div"); err.className="err";
+  err.textContent="Fill in load, reps and RIR for every set first.";
+  const btn=document.createElement("button"); btn.className="save";
+  const already=loggedComplete(ex.logged,n);
+  btn.textContent=already?"Update":"Mark complete";
+  if(already) c.classList.add("done");
+  btn.onclick=async()=>{
+    const missing=inputs.some(x=>x.load.value===""||x.reps.value===""||x.rir.value==="");
+    if(missing){err.textContent="Fill in load, reps and RIR for every set first.";err.classList.add("show");return;}
+    err.classList.remove("show");
+    btn.disabled=true; btn.textContent="Saving…";
+    const logged=inputs.map(x=>[x.load.value,x.reps.value,x.rir.value]);
+    // progress string for the sheet
+    let progress="";
+    const bw=program.weeks[baseline[ex.name]];
+    const bx=bw.exercises.find(e=>e.name===ex.name);
+    if(baseline[ex.name]===wi) progress="baseline";
+    else if(bx && loggedComplete(bx.logged,bx.sets)){
+      const bv=volume(bx.logged), cv=volume(logged);
+      const pct=bv>0?Math.round((cv-bv)/bv*100):0;
+      progress=(pct>0?"+":"")+pct+"%";
+    }
+    try{
+      const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain"},
+        body:JSON.stringify({client:slug(),row:ex.row,sets:logged,note:note.value.trim(),progress})});
+      const res=await r.json();
+      if(res.error) throw new Error(res.error);
+      ex.logged=logged; ex.note=note.value.trim();
+      c.classList.add("done");
+      btn.textContent="✓ Saved"; btn.disabled=false;
+      setTimeout(()=>{btn.textContent="Update";},1500);
+      // refresh badge
+      titleRow.replaceChild(progBadge(ex,wi),titleRow.querySelector(".prog"));
+    }catch(e){
+      btn.disabled=false; btn.textContent=already?"Update":"Mark complete";
+      err.textContent="Couldn't save. Check your connection and try again.";
+      err.classList.add("show");
+    }
+  };
+  sets.appendChild(btn);
+  sets.appendChild(err);
+  c.appendChild(sets);
+  return c;
+}
+
+function openModal(){document.getElementById("modal").classList.add("open")}
+function closeModal(){document.getElementById("modal").classList.remove("open")}
+
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+window.addEventListener("hashchange",()=>location.reload());
+load();
+</script>
+</body>
+</html>
