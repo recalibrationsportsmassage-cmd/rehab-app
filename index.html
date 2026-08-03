@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#1d2828">
 <!-- No <link rel="manifest"> on purpose: a manifest forces iOS to launch at
-     start_url, which drops the #/client part of the link. These meta tags give
-     a standalone app that opens at whatever URL was saved. -->
+     start_url, which drops the #/client part of the link. -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,84 +15,45 @@
 <title>Recalibration — Program</title>
 <style>
   :root{
-    --bg:#1d2828;
-    --surface:#243131;
-    --surface-2:#2b3a3a;
-    --border:#3b4d4d;
-    --text:#d5dddd;
-    --text-dim:#94a5a5;
-    --accent:#c25b41;
-    --red:#ff6b6b;
-    --green:#5fbd7d;
-    --radius:12px;
+    --bg:#1d2828; --surface:#243131; --surface-2:#2b3a3a; --border:#3b4d4d;
+    --text:#d5dddd; --text-dim:#94a5a5; --accent:#c25b41;
+    --red:#ff6b6b; --green:#5fbd7d; --radius:12px;
     font-size:16px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{
-    background:var(--bg);
-    color:var(--text);
+    background:var(--bg);color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    -webkit-font-smoothing:antialiased;
-    max-width:520px;
-    margin:0 auto;
-    padding:0 16px 80px;
+    -webkit-font-smoothing:antialiased;max-width:520px;margin:0 auto;padding:0 16px 80px;
   }
-  header{
-    padding:24px 0 8px;
-    display:flex;
-    align-items:flex-start;
-    justify-content:space-between;
-  }
+  header{padding:24px 0 8px;display:flex;align-items:flex-start;justify-content:space-between}
   .logo{height:52px;margin-bottom:14px;display:block}
-  .logo-text{
-    font-size:.85rem;text-transform:uppercase;letter-spacing:.18em;
-    color:var(--accent);margin-bottom:12px;display:none;
-  }
+  .logo-text{font-size:.85rem;text-transform:uppercase;letter-spacing:.18em;color:var(--accent);margin-bottom:12px;display:none}
   header h1{font-size:1.35rem;font-weight:600;letter-spacing:-.01em}
   header .sub{color:var(--text-dim);font-size:.85rem;margin-top:4px}
   .info-btn{
-    background:var(--surface);
-    border:1px solid var(--border);
-    color:var(--text-dim);
-    width:34px;height:34px;
-    border-radius:50%;
-    font-size:.9rem;
-    cursor:pointer;
-    flex-shrink:0;
-    margin-top:56px;
+    background:var(--surface);border:1px solid var(--border);color:var(--text-dim);
+    width:34px;height:34px;border-radius:50%;font-size:.9rem;cursor:pointer;flex-shrink:0;margin-top:56px;
   }
   .controls{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 0}
   select.week{
-    width:100%;
-    background:var(--surface);
-    color:var(--text);
-    border:1px solid var(--border);
-    border-radius:var(--radius);
-    padding:12px 14px;
-    font-size:1rem;
-    appearance:none;
+    width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);
+    border-radius:var(--radius);padding:12px 14px;font-size:1rem;
+    appearance:none;-webkit-appearance:none;font-family:inherit;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a5a5' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
-    background-repeat:no-repeat;
-    background-position:right 14px center;
+    background-repeat:no-repeat;background-position:right 14px center;
   }
   .due{color:var(--text-dim);font-size:.85rem;margin:10px 2px 4px}
   .due strong{color:var(--text);font-weight:500}
-  .card{
-    background:var(--surface);
-    border:1px solid var(--border);
-    border-radius:var(--radius);
-    margin-top:14px;
-    overflow:hidden;
-  }
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-top:14px;overflow:hidden}
   .card.done{border-color:#3a5a46}
   .card-head{padding:16px 16px 12px}
   .card-title{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
   .card-title h2{font-size:1.02rem;font-weight:600;line-height:1.3}
   .prog{
-    flex-shrink:0;display:flex;align-items:center;gap:5px;
-    font-size:.8rem;color:var(--text-dim);
-    background:var(--surface-2);border:1px solid var(--border);
-    border-radius:20px;padding:4px 10px;cursor:pointer;user-select:none;
+    flex-shrink:0;display:flex;align-items:center;gap:5px;font-size:.8rem;color:var(--text-dim);
+    background:var(--surface-2);border:1px solid var(--border);border-radius:20px;
+    padding:4px 10px;cursor:pointer;user-select:none;
   }
   .prog .arrow{font-size:.75rem}
   .prog.up .arrow{color:var(--green)}
@@ -105,18 +65,27 @@
   .chip{
     background:var(--surface-2);border:1px solid var(--border);color:var(--text);
     border-radius:8px;padding:8px 12px;font-size:.85rem;cursor:pointer;
-    text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+    text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-family:inherit;
   }
   .chip.video{color:var(--accent)}
   .cues{display:none;border-top:1px solid var(--border);padding:14px 16px;background:var(--surface-2)}
   .cues.open{display:block}
   .cues ul{list-style:none}
-  .cues li{
-    font-size:.88rem;color:var(--text-dim);line-height:1.5;
-    padding:3px 0 3px 14px;position:relative;
-  }
+  .cues li{font-size:.88rem;color:var(--text-dim);line-height:1.5;padding:3px 0 3px 14px;position:relative}
   .cues li::before{content:"–";position:absolute;left:0;color:var(--accent)}
-  .sets{border-top:1px solid var(--border);padding:12px 16px 16px}
+  .sessbar{
+    display:flex;gap:6px;flex-wrap:wrap;align-items:center;
+    border-top:1px solid var(--border);padding:12px 16px 0;
+  }
+  .sessbar .lab{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);width:100%;margin-bottom:2px}
+  .sbtn{
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text-dim);
+    border-radius:8px;min-width:40px;padding:8px 10px;font-size:.85rem;cursor:pointer;font-family:inherit;
+  }
+  .sbtn.on{border-color:var(--accent);color:var(--text)}
+  .sbtn.logged{background:#2c4a39;border-color:#3a5a46;color:var(--green)}
+  .sbtn.logged.on{border-color:var(--accent)}
+  .sets{padding:12px 16px 16px}
   .sets-grid{display:grid;gap:8px;align-items:center}
   .sets-grid.cols3{grid-template-columns:44px 1fr 1fr 1fr}
   .sets-grid.cols2{grid-template-columns:44px 1fr 1fr}
@@ -127,17 +96,12 @@
     color:var(--text);border-radius:8px;padding:10px 8px;font-size:.95rem;
     text-align:center;font-family:inherit;
   }
-  /* Safari sizes a <select> to its widest option instead of filling the grid
-     track, so force it to fill and draw our own arrow with room to breathe. */
-  .sets select{
-    appearance:none;-webkit-appearance:none;
-    text-align:left;text-align-last:center;
-    padding-right:26px;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a5a5' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
-    background-repeat:no-repeat;
-    background-position:right 9px center;
-  }
   .sets input:focus,.sets select:focus{outline:none;border-color:var(--accent)}
+  .sets select{
+    appearance:none;-webkit-appearance:none;text-align:left;text-align-last:center;padding-right:26px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a5a5' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 9px center;
+  }
   .sets select.flag{border-color:var(--red);color:var(--red)}
   textarea.note{
     width:100%;margin-top:12px;background:var(--bg);border:1px solid var(--border);
@@ -146,7 +110,7 @@
   }
   .save{
     width:100%;margin-top:12px;background:var(--accent);color:#fff;border:none;
-    border-radius:8px;padding:12px;font-size:.95rem;font-weight:600;cursor:pointer;
+    border-radius:8px;padding:12px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit;
   }
   .save:disabled{opacity:.6}
   .card.done .save{background:var(--surface-2);color:var(--green);border:1px solid #3a5a46}
@@ -158,15 +122,11 @@
     border-radius:50%;margin:0 auto 16px;animation:spin .8s linear infinite;
   }
   @keyframes spin{to{transform:rotate(360deg)}}
-  .overlay{
-    display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);
-    z-index:20;align-items:flex-end;justify-content:center;
-  }
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:20;align-items:flex-end;justify-content:center}
   .overlay.open{display:flex}
   .modal{
-    background:var(--surface);border:1px solid var(--border);
-    border-radius:16px 16px 0 0;max-width:520px;width:100%;
-    padding:24px 20px 32px;max-height:80vh;overflow-y:auto;
+    background:var(--surface);border:1px solid var(--border);border-radius:16px 16px 0 0;
+    max-width:520px;width:100%;padding:24px 20px 32px;max-height:80vh;overflow-y:auto;
   }
   .modal h3{font-size:1.1rem;margin-bottom:14px}
   .modal p{font-size:.9rem;color:var(--text-dim);line-height:1.55;margin-bottom:10px}
@@ -201,7 +161,8 @@
     <h3>How this works</h3>
     <p>Use the dropdown at the top to move between weeks. Each exercise shows the sets, reps and intensity.</p>
     <p>For some exercises, we'll track intensity as <b>Reps in Reserve (RIR)</b> — how many reps you had left before failure. 0 means you couldn't have done another rep.</p>
-    <p>After each set, log your load, reps and intensity. The badge next to each exercise shows how you're tracking against your first week. Tap it to see the number.</p>
+    <p>Some exercises are done more than once a week. Pick the session you're logging, then enter your load, reps and intensity for each set.</p>
+    <p>The badge next to each exercise shows how you're tracking against your first week. Tap it to see the number.</p>
     <p>Notes are optional, but if something feels better, the same or worse, write it down.</p>
     <p>Aim to have everything done 12 hours before our follow-up session.</p>
     <button class="save" onclick="closeModal()">Got it</button>
@@ -209,13 +170,9 @@
 </div>
 
 <script>
-/* ============================================================
-   CONFIG — Apps Script web app URL
-   ============================================================ */
 const API_URL = "https://script.google.com/macros/s/AKfycbwyQ3RzOItJDLmBTEyGsPx9FKnwoZgkwFxnKn3ekEO-qrTbzjHUYoBEfjZEAQXSgB3f/exec";
 
-let program = null;
-let baseline = {};
+let program = null, baseline = {};
 
 function slug(){
   const fromUrl = (location.hash.replace(/^#\/?/,"") ||
@@ -223,14 +180,8 @@ function slug(){
   if(fromUrl){ try{ localStorage.setItem("lastClient", fromUrl); }catch(e){} return fromUrl; }
   try{ return localStorage.getItem("lastClient") || ""; }catch(e){ return ""; }
 }
-
-/* Make sure the client is in the address bar before anyone saves the page,
-   so the home-screen shortcut carries it. */
 function pinClient(c){
-  if(!c) return;
-  if(location.hash !== "#/"+c){
-    history.replaceState(null,"","#/"+c);
-  }
+  if(c && location.hash !== "#/"+c) history.replaceState(null,"","#/"+c);
 }
 
 const fmt = d => new Date(d+"T00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});
@@ -243,11 +194,10 @@ async function load(){
   if(!c){ box.innerHTML = "This link isn't complete.<br>Open the link Ben sent you, then save it again."; return; }
   pinClient(c);
   try{
-    const r = await fetch(API_URL + "?client=" + encodeURIComponent(c));
+    const r = await fetch(API_URL + "?action=program&client=" + encodeURIComponent(c));
     const data = await r.json();
     if(data.error){ box.innerHTML = "Couldn't find your program.<br>Check the link Ben sent you."; return; }
-    program = data;
-    init();
+    program = data; init();
   }catch(e){
     box.innerHTML = "Couldn't load your program.<br>Check your connection and try again.";
   }
@@ -264,7 +214,6 @@ function init(){
   const sel = document.getElementById("weekSelect");
   sel.innerHTML = program.weeks.map((w,i)=>
     '<option value="'+i+'">Week '+(i+1)+' · '+fmtShort(w.start)+'</option>').join("");
-  // default to the most recent week
   sel.value = program.weeks.length - 1;
   document.getElementById("stateBox").style.display = "none";
   document.getElementById("controls").style.display = "block";
@@ -274,68 +223,70 @@ function init(){
   }catch(e){}
 }
 
-/* ---------- reps / summary line ---------- */
+/* ---------- labels ---------- */
 function repsLabel(ex){
-  const v = (ex.reps||"").trim();
-  if(!v) return "";
-  const unit = (ex.unit||"").toLowerCase();
-  const side = ex.perSide ? " each side" : "";
-  const isNumeric = /^\d+(\s*[-–]\s*\d+)?$/.test(v);
-  if(unit.indexOf("sec")===0){
-    return "<b>"+esc(v)+"s</b>"+side;
-  }
-  if(unit.indexOf("min")===0){
-    const plural = v==="1" ? " min" : " mins";
-    return "<b>"+esc(v)+plural+"</b>"+side;
-  }
-  if(unit.indexOf("rep")===0 || (!unit && isNumeric)){
+  const v=(ex.reps||"").trim(); if(!v) return "";
+  const unit=(ex.unit||"").toLowerCase();
+  const side=ex.perSide?" each side":"";
+  const isNumeric=/^\d+(\s*[-–]\s*\d+)?$/.test(v);
+  if(unit.indexOf("sec")===0) return "<b>"+esc(v)+"s</b>"+side;
+  if(unit.indexOf("min")===0) return "<b>"+esc(v)+(v==="1"?" min":" mins")+"</b>"+side;
+  if(unit.indexOf("rep")===0 || (!unit && isNumeric))
     return "<b>"+esc(v.replace(/\s*-\s*/,"–"))+"</b> reps"+side;
-  }
-  // free text / description — show as written, no hardcoded "reps"
   return "<b>"+esc(v)+"</b>"+side;
 }
-
 function targetLabel(ex){
-  const t=(ex.target||"").trim();
-  if(!t) return "";
-  if(/RIR/i.test(t)) return "<b>"+esc(t)+"</b>";      // already reads "1 RIR"
-  return "<b>"+esc(t)+"</b> intensity";               // Low / Mod
+  const t=(ex.target||"").trim(); if(!t) return "";
+  return /RIR/i.test(t) ? "<b>"+esc(t)+"</b>" : "<b>"+esc(t)+"</b> intensity";
 }
-
+function freqLabel(ex){
+  const f=(ex.freq||"").trim(); if(!f) return "";
+  if(/daily/i.test(f)) return "<b>Daily</b>";
+  if(/as needed/i.test(f)) return "<b>As needed</b>";
+  return "<b>"+esc(f)+"</b> this week";
+}
 function summaryLine(ex){
   const bits=[];
   if(ex.sets) bits.push("<b>"+ex.sets+" set"+(ex.sets>1?"s":"")+"</b>");
   const r=repsLabel(ex); if(r) bits.push(r);
   const t=targetLabel(ex); if(t) bits.push(t);
+  const f=freqLabel(ex); if(f) bits.push(f);
   return bits.join(" · ");
 }
 
 /* ---------- progress ---------- */
-function perSetVolume(logged, sets){
-  // average work per set, so weeks with different set counts compare fairly
-  let vol=0, reps=0, hasLoad=false, n=0;
-  for(let i=0;i<sets;i++){
-    const s=logged[i]; if(!s) continue;
-    const l=parseFloat(s[0])||0, r=parseFloat(s[1])||0;
-    if(l>0) hasLoad=true;
-    vol+=l*r; reps+=r; n++;
-  }
-  if(!n) return 0;
-  return (hasLoad ? vol : reps) / n;
-}
-
-function loggedComplete(ex){
-  const n=ex.sets||1;
-  if(!ex.logged) return false;
-  for(let i=0;i<n;i++){
-    const s=ex.logged[i];
-    if(!s) return false;
-    if(s[1]==="" || s[2]==="") return false;              // reps + intensity always required
-    if(ex.type!=="mobility" && s[0]==="") return false;    // load only for strength
+function sessionComplete(ex, s){
+  const rec = ex.sessions && ex.sessions[s];
+  if(!rec) return false;
+  for(let i=1;i<=ex.sets;i++){
+    const v=rec.sets[String(i)];
+    if(!v) return false;
+    if(v[1]==="" || v[2]==="") return false;
+    if(ex.type!=="mobility" && v[0]==="") return false;
   }
   return true;
 }
-
+function sessionsDone(ex){
+  let n=0;
+  for(let s=1;s<=ex.freqNum;s++) if(sessionComplete(ex,s)) n++;
+  return n;
+}
+/** average work per set across all logged sessions */
+function avgPerSet(ex){
+  let vol=0, reps=0, n=0, hasLoad=false;
+  for(let s=1;s<=ex.freqNum;s++){
+    const rec = ex.sessions && ex.sessions[s];
+    if(!rec) continue;
+    Object.keys(rec.sets).forEach(k=>{
+      const v=rec.sets[k];
+      const l=parseFloat(v[0])||0, r=parseFloat(v[1])||0;
+      if(l>0) hasLoad=true;
+      vol+=l*r; reps+=r; n++;
+    });
+  }
+  if(!n) return null;
+  return (hasLoad?vol:reps)/n;
+}
 function targetRir(ex){
   if(ex.type==="mobility") return null;
   const m=/(\d+)\s*RIR/i.exec(ex.target||"");
@@ -343,27 +294,24 @@ function targetRir(ex){
 }
 
 function renderWeek(){
-  const wi = +document.getElementById("weekSelect").value;
-  const wk = program.weeks[wi];
+  const wi=+document.getElementById("weekSelect").value;
+  const wk=program.weeks[wi];
   document.getElementById("dueLine").innerHTML =
     wk.end ? "Complete by <strong>"+fmt(wk.end)+"</strong>" : "";
-  const list = document.getElementById("exerciseList");
-  list.innerHTML = "";
+  const list=document.getElementById("exerciseList");
+  list.innerHTML="";
   wk.exercises.forEach(ex=>list.appendChild(card(ex,wi)));
 }
 
 function progBadge(ex,wi){
-  const el=document.createElement("div");
-  el.className="prog";
+  const el=document.createElement("div"); el.className="prog";
   let arrow="–", label="Progress", val="";
-  const isBase = baseline[ex.name]===wi;
-  if(isBase){ el.classList.add("base"); arrow="•"; label="Week 1"; val="Baseline"; }
+  if(baseline[ex.name]===wi){ el.classList.add("base"); arrow="•"; label="Week 1"; val="Baseline"; }
   else{
-    const bw=program.weeks[baseline[ex.name]];
-    const bx=bw.exercises.find(e=>e.name===ex.name);
-    if(bx && loggedComplete(bx) && loggedComplete(ex)){
-      const bv=perSetVolume(bx.logged,bx.sets), cv=perSetVolume(ex.logged,ex.sets);
-      const pct=bv>0?Math.round((cv-bv)/bv*100):0;
+    const bx=program.weeks[baseline[ex.name]].exercises.find(e=>e.name===ex.name);
+    const bv=bx?avgPerSet(bx):null, cv=avgPerSet(ex);
+    if(bv && cv){
+      const pct=Math.round((cv-bv)/bv*100);
       if(pct>0){el.classList.add("up");arrow="▲";}
       else if(pct<0){el.classList.add("down");arrow="▼";}
       else{el.classList.add("flat");arrow="–";}
@@ -379,11 +327,12 @@ function progBadge(ex,wi){
 function card(ex,wi){
   const isMob = ex.type==="mobility";
   const c=document.createElement("div"); c.className="card";
+
   const head=document.createElement("div"); head.className="card-head";
   const titleRow=document.createElement("div"); titleRow.className="card-title";
   titleRow.innerHTML="<h2></h2>";
   titleRow.querySelector("h2").textContent=ex.name;
-  if(!isMob) titleRow.appendChild(progBadge(ex,wi));   // no week-on-week for mobility
+  if(!isMob) titleRow.appendChild(progBadge(ex,wi));
   head.appendChild(titleRow);
 
   const t=document.createElement("div"); t.className="target";
@@ -391,9 +340,8 @@ function card(ex,wi){
   head.appendChild(t);
 
   const links=document.createElement("div"); links.className="row-links";
-  const hasCues = ex.cues && ex.cues.length;
   let cues=null;
-  if(hasCues){
+  if(ex.cues && ex.cues.length){
     const cueBtn=document.createElement("button"); cueBtn.className="chip"; cueBtn.textContent="Cues";
     links.appendChild(cueBtn);
     cues=document.createElement("div"); cues.className="cues";
@@ -417,25 +365,45 @@ function card(ex,wi){
   c.appendChild(head);
   if(cues) c.appendChild(cues);
 
-  // ---- logging ----
+  // ---- session picker ----
+  let activeSession = 1;
+  for(let s=1;s<=ex.freqNum;s++){ if(!sessionComplete(ex,s)){ activeSession=s; break; } activeSession=s; }
+  const sessbar=document.createElement("div"); sessbar.className="sessbar";
+  if(ex.freqNum>1){
+    const lab=document.createElement("div"); lab.className="lab"; lab.textContent="Session";
+    sessbar.appendChild(lab);
+    for(let s=1;s<=ex.freqNum;s++){
+      const b=document.createElement("button"); b.className="sbtn"; b.textContent=s;
+      b.dataset.s=s;
+      sessbar.appendChild(b);
+      b.onclick=()=>{ activeSession=s; paintSessions(); fillInputs(); };
+    }
+    c.appendChild(sessbar);
+  }
+  function paintSessions(){
+    if(ex.freqNum<=1) return;
+    sessbar.querySelectorAll(".sbtn").forEach(b=>{
+      const s=+b.dataset.s;
+      b.classList.toggle("on", s===activeSession);
+      b.classList.toggle("logged", sessionComplete(ex,s));
+    });
+  }
+
+  // ---- inputs ----
   const sets=document.createElement("div"); sets.className="sets";
+  if(ex.freqNum<=1) sets.style.borderTop="1px solid var(--border)";
   const grid=document.createElement("div");
   grid.className="sets-grid "+(isMob?"cols2":"cols3");
-
-  const repsHeading = (ex.unit||"").toLowerCase().indexOf("sec")===0 ? "Time (s)"
-                    : (ex.unit||"").toLowerCase().indexOf("min")===0 ? "Time (min)"
-                    : "Reps";
-  grid.innerHTML = '<div class="lbl"></div>' +
-    (isMob?"":'<div class="lbl">Load (kg)</div>') +
+  const u=(ex.unit||"").toLowerCase();
+  const repsHeading = u.indexOf("sec")===0 ? "Time (s)" : (u.indexOf("min")===0 ? "Time (min)" : "Reps");
+  grid.innerHTML='<div class="lbl"></div>'+(isMob?"":'<div class="lbl">Load (kg)</div>')+
     '<div class="lbl">'+repsHeading+'</div><div class="lbl">Intensity</div>';
 
   const tRir=targetRir(ex);
   const inputs=[];
-  const n=ex.sets||1;
-  for(let s=0;s<n;s++){
+  for(let s=0;s<ex.sets;s++){
     const num=document.createElement("div"); num.className="set-num"; num.textContent="Set "+(s+1);
     grid.appendChild(num);
-
     let load=null;
     if(!isMob){
       load=document.createElement("input");
@@ -445,91 +413,82 @@ function card(ex,wi){
     const reps=document.createElement("input");
     reps.type="number"; reps.inputMode="numeric"; reps.placeholder="–"; reps.min="0";
     grid.appendChild(reps);
-
     const inten=document.createElement("select");
-    if(isMob){
-      inten.innerHTML='<option value="">–</option><option>Low</option><option>Mod</option>';
-    }else{
-      inten.innerHTML='<option value="">–</option>'+
-        [0,1,2,3,4,5].map(x=>'<option value="'+x+'">'+x+' RIR</option>').join("");
-    }
+    inten.innerHTML = isMob
+      ? '<option value="">–</option><option>Low</option><option>Mod</option>'
+      : '<option value="">–</option>'+[0,1,2,3,4,5].map(x=>'<option value="'+x+'">'+x+' RIR</option>').join("");
     grid.appendChild(inten);
-
-    if(ex.logged && ex.logged[s]){
-      if(load) load.value=ex.logged[s][0];
-      reps.value=ex.logged[s][1];
-      inten.value=ex.logged[s][2];
-    }
     inputs.push({load,reps,inten});
-
     if(tRir!==null){
       const check=()=>{
         if(inten.value!=="" && +inten.value>tRir) inten.classList.add("flag");
         else inten.classList.remove("flag");
       };
-      inten.onchange=check; check();
+      inten.onchange=check;
     }
   }
   sets.appendChild(grid);
 
   const note=document.createElement("textarea"); note.className="note";
   note.placeholder="Note for Ben (optional)";
-  if(ex.note) note.value=ex.note;
   sets.appendChild(note);
 
   const err=document.createElement("div"); err.className="err";
   const btn=document.createElement("button"); btn.className="save";
-  const already=loggedComplete(ex);
-  btn.textContent=already?"Update":"Mark complete";
-  if(already) c.classList.add("done");
+  sets.appendChild(btn); sets.appendChild(err);
+  c.appendChild(sets);
+
+  function fillInputs(){
+    const rec = ex.sessions && ex.sessions[activeSession];
+    inputs.forEach((x,i)=>{
+      const v = rec && rec.sets[String(i+1)];
+      if(x.load) x.load.value = v ? v[0] : "";
+      x.reps.value = v ? v[1] : "";
+      x.inten.value = v ? v[2] : "";
+      if(x.inten.onchange) x.inten.onchange();
+    });
+    note.value = rec ? (rec.note||"") : "";
+    const done = sessionComplete(ex,activeSession);
+    btn.textContent = done ? "Update" : "Mark complete";
+    c.classList.toggle("done", sessionsDone(ex) >= ex.freqNum);
+    err.classList.remove("show");
+  }
 
   btn.onclick=async()=>{
     const missing=inputs.some(x=>
       x.reps.value==="" || x.inten.value==="" || (x.load && x.load.value===""));
     if(missing){
-      err.textContent = isMob
-        ? "Fill in every box for each set first."
-        : "Fill in load, reps and intensity for every set first.";
+      err.textContent = isMob ? "Fill in every box for each set first."
+                              : "Fill in load, reps and intensity for every set first.";
       err.classList.add("show"); return;
     }
     err.classList.remove("show");
     btn.disabled=true; btn.textContent="Saving…";
     const logged=inputs.map(x=>[x.load?x.load.value:"", x.reps.value, x.inten.value]);
-
-    let progress="";
-    if(!isMob){
-      if(baseline[ex.name]===wi) progress="baseline";
-      else{
-        const bx=program.weeks[baseline[ex.name]].exercises.find(e=>e.name===ex.name);
-        if(bx && loggedComplete(bx)){
-          const bv=perSetVolume(bx.logged,bx.sets);
-          const cv=perSetVolume(logged,logged.length);
-          const pct=bv>0?Math.round((cv-bv)/bv*100):0;
-          progress=(pct>0?"+":"")+pct+"%";
-        }
-      }
-    }
-
     try{
       const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain"},
-        body:JSON.stringify({client:slug(),row:ex.row,sets:logged,note:note.value.trim(),progress})});
+        body:JSON.stringify({action:"session",client:slug(),row:ex.row,
+                             session:activeSession,sets:logged,note:note.value.trim()})});
       const res=await r.json();
       if(res.error) throw new Error(res.error);
-      ex.logged=logged; ex.note=note.value.trim();
-      c.classList.add("done");
-      btn.textContent="✓ Saved"; btn.disabled=false;
-      setTimeout(()=>{btn.textContent="Update";},1500);
+      if(!ex.sessions) ex.sessions={};
+      const map={}; logged.forEach((v,i)=>map[String(i+1)]=v);
+      ex.sessions[activeSession]={sets:map,note:note.value.trim()};
+      btn.disabled=false;
+      paintSessions();
       const oldBadge=titleRow.querySelector(".prog");
       if(oldBadge) titleRow.replaceChild(progBadge(ex,wi),oldBadge);
+      btn.textContent="✓ Saved";
+      setTimeout(()=>{ fillInputs(); },1400);
+      c.classList.toggle("done", sessionsDone(ex) >= ex.freqNum);
     }catch(e){
-      btn.disabled=false; btn.textContent=already?"Update":"Mark complete";
+      btn.disabled=false; btn.textContent="Mark complete";
       err.textContent="Couldn't save. Check your connection and try again.";
       err.classList.add("show");
     }
   };
-  sets.appendChild(btn);
-  sets.appendChild(err);
-  c.appendChild(sets);
+
+  paintSessions(); fillInputs();
   return c;
 }
 
