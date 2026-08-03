@@ -26,10 +26,12 @@
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;max-width:520px;margin:0 auto;padding:0 16px 80px;
   }
-  header{padding:24px 0 8px;display:flex;align-items:flex-start;justify-content:space-between}
-  .logo{height:78px;margin-bottom:14px;display:block}
-  a.logo-link{display:inline-block}
-  .logo-text{font-size:.95rem;text-transform:uppercase;letter-spacing:.18em;color:var(--accent);margin-bottom:12px;display:none;text-decoration:none}
+  header{padding:24px 0 8px}
+  a.logo-link{display:block;text-align:center;margin-bottom:18px}
+  .logo{height:78px;display:inline-block}
+  .titlebar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .vs{font-size:.72rem;color:var(--text-dim);margin-top:2px}
+  .logo-text{font-size:.95rem;text-transform:uppercase;letter-spacing:.18em;color:var(--accent);display:none;text-decoration:none}
   .tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin:16px 0 4px}
   .tabs button{
     background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);
@@ -37,9 +39,10 @@
   }
   .tabs button.on{color:var(--text);border-bottom-color:var(--accent)}
   .pane{display:none}.pane.on{display:block}
-  .stat{display:flex;gap:16px;align-items:flex-start}
-  .big{font-size:2rem;font-weight:600;line-height:1}
-  .big small{font-size:.8rem;font-weight:400;color:var(--text-dim);display:block;margin-top:6px}
+  .stat{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  .stat > div + div{border-left:1px solid var(--border);padding-left:16px}
+  .big{font-size:1.9rem;font-weight:600;line-height:1}
+  .big small{font-size:.8rem;font-weight:400;color:var(--text-dim);display:block;margin-top:8px;line-height:1.35}
   .exline{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--border)}
   .exline:first-child{border-top:none}
   .exline .nm{font-size:.92rem}
@@ -56,7 +59,7 @@
   header .sub{color:var(--text-dim);font-size:.85rem;margin-top:4px}
   .info-btn{
     background:var(--surface);border:1px solid var(--border);color:var(--text-dim);
-    width:34px;height:34px;border-radius:50%;font-size:.9rem;cursor:pointer;flex-shrink:0;margin-top:56px;
+    width:34px;height:34px;border-radius:50%;font-size:.9rem;cursor:pointer;flex-shrink:0;
   }
   .controls{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 0}
   select.week{
@@ -162,17 +165,19 @@
 <body>
 
 <header>
-  <div>
-    <a class="logo-link" href="https://www.recalibrationmassage.com.au/" target="_blank" rel="noopener">
-      <img class="logo" alt="Recalibration"
-        src="https://images.squarespace-cdn.com/content/v1/66d2a42747a32424bfaefbe7/834960fe-960a-4402-bd41-5b6042b762c9/Recalibration-logo-white.png?format=750w"
-        onerror="this.style.display='none';document.querySelector('.logo-text').style.display='block'">
-      <div class="logo-text">Recalibration</div>
-    </a>
-    <h1 id="clientName">&nbsp;</h1>
-    <div class="sub" id="subLine">Your program</div>
+  <a class="logo-link" href="https://www.recalibrationmassage.com.au/" target="_blank" rel="noopener">
+    <img class="logo" alt="Recalibration"
+      src="https://images.squarespace-cdn.com/content/v1/66d2a42747a32424bfaefbe7/834960fe-960a-4402-bd41-5b6042b762c9/Recalibration-logo-white.png?format=750w"
+      onerror="this.style.display='none';document.querySelector('.logo-text').style.display='block'">
+    <div class="logo-text">Recalibration</div>
+  </a>
+  <div class="titlebar">
+    <div>
+      <h1 id="clientName">&nbsp;</h1>
+      <div class="sub" id="subLine">Your program</div>
+    </div>
+    <button class="info-btn" onclick="openModal()">i</button>
   </div>
-  <button class="info-btn" onclick="openModal()">i</button>
 </header>
 
 <div class="tabs" id="tabs" style="display:none">
@@ -591,15 +596,14 @@ function renderAnalytics(){
 
   let html =
     '<div class="an-card"><div class="stat">'+
-      '<div class="big">'+done+'<small>of '+target+' sessions this week</small></div>'+
-      '<div style="margin-left:auto;text-align:right">'+
-        '<div class="big" style="font-size:1.4rem">'+streak+'<small>week'+(streak===1?"":"s")+' in a row</small></div>'+
-      '</div>'+
+      '<div><div class="big">'+done+'<small>of '+target+' sessions<br>this week</small></div></div>'+
+      '<div><div class="big">'+streak+'<small>week'+(streak===1?"":"s")+'<br>in a row</small></div></div>'+
     '</div></div>';
 
   if(chartable.length){
     html += '<div class="an-card">'+
-      '<h3>Over time</h3><div class="an-sub">Compared with your first week</div>'+
+      '<h3>Over time</h3>'+
+      '<div class="an-sub" id="anMetric"></div>'+
       '<div style="margin-top:14px"><select class="week" id="anEx" onchange="drawAnChart()">'+
         chartable.map(n=>'<option>'+esc(n)+'</option>').join("")+
       '</select></div><div id="anChart" style="margin-top:16px"></div>'+
@@ -630,10 +634,11 @@ function renderAnalytics(){
       const on = sessionComplete(ex,s);
       spark += '<i class="'+(on?"on":"")+'" style="height:'+(on?20:7)+'px"></i>';
     }
+    const tLabel = (t.indexOf("%")>-1) ? '<div class="vs">vs week 1</div>' : '';
     html += '<div class="exline"><div><div class="nm">'+esc(ex.name)+'</div>'+
       '<div class="val">'+d+' of '+n+' session'+(n===1?"":"s")+'</div></div>'+
       '<div style="text-align:right"><div class="spark">'+spark+'</div>'+
-      '<div style="margin-top:6px">'+t+'</div></div></div>';
+      '<div style="margin-top:6px">'+t+'</div>'+tLabel+'</div></div>';
   });
   html += '</div></div>';
 
@@ -646,12 +651,16 @@ function drawAnChart(){
   if(!sel) return;
   const name = sel.value;
   const pts = [];
+  let loaded = false;
   program.weeks.forEach((w,i)=>{
     const ex = w.exercises.find(e=>e.name===name);
     if(!ex) return;
+    if(ex.type !== "mobility") loaded = true;
     const v = avgPerSet(ex);
     pts.push({ label:"Wk "+(i+1), v: v });
   });
+  const unit = loaded ? "kg lifted per set (load × reps)" : "reps per set";
+  document.getElementById("anMetric").textContent = "Average " + unit;
   const withVals = pts.filter(p=>p.v);
   const max = withVals.length ? Math.max(...withVals.map(p=>p.v)) : 1;
   const n = pts.length, bw = 64, gap = 34, pad = 16;
@@ -677,9 +686,9 @@ function drawAnChart(){
   if(withVals.length >= 2){
     const first = withVals[0].v, last = withVals[withVals.length-1].v;
     const pct = Math.round((last-first)/first*100);
-    note.textContent = pct>0 ? "Up "+pct+"% since week 1."
-                     : pct<0 ? "Down "+Math.abs(pct)+"% since week 1."
-                     : "Holding steady since week 1.";
+    note.textContent = pct>0 ? "You're doing "+pct+"% more work per set than in week 1."
+                     : pct<0 ? "You're doing "+Math.abs(pct)+"% less work per set than in week 1."
+                     : "About the same work per set as week 1.";
   }else{
     note.textContent = "Log this exercise in more than one week to see a trend.";
   }
