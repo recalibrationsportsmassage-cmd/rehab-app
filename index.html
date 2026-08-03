@@ -27,8 +27,31 @@
     -webkit-font-smoothing:antialiased;max-width:520px;margin:0 auto;padding:0 16px 80px;
   }
   header{padding:24px 0 8px;display:flex;align-items:flex-start;justify-content:space-between}
-  .logo{height:52px;margin-bottom:14px;display:block}
-  .logo-text{font-size:.85rem;text-transform:uppercase;letter-spacing:.18em;color:var(--accent);margin-bottom:12px;display:none}
+  .logo{height:78px;margin-bottom:14px;display:block}
+  a.logo-link{display:inline-block}
+  .logo-text{font-size:.95rem;text-transform:uppercase;letter-spacing:.18em;color:var(--accent);margin-bottom:12px;display:none;text-decoration:none}
+  .tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin:16px 0 4px}
+  .tabs button{
+    background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);
+    padding:10px 14px;font-size:.92rem;cursor:pointer;font-family:inherit;
+  }
+  .tabs button.on{color:var(--text);border-bottom-color:var(--accent)}
+  .pane{display:none}.pane.on{display:block}
+  .stat{display:flex;gap:16px;align-items:flex-start}
+  .big{font-size:2rem;font-weight:600;line-height:1}
+  .big small{font-size:.8rem;font-weight:400;color:var(--text-dim);display:block;margin-top:6px}
+  .exline{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--border)}
+  .exline:first-child{border-top:none}
+  .exline .nm{font-size:.92rem}
+  .exline .val{color:var(--text-dim);font-size:.8rem;margin-top:3px}
+  .spark{display:flex;align-items:flex-end;gap:3px;height:24px;justify-content:flex-end}
+  .spark i{width:7px;background:var(--surface-2);border-radius:2px;display:block}
+  .spark i.on{background:var(--accent)}
+  .an-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:14px}
+  .an-card h3{font-size:.95rem;font-weight:600}
+  .an-sub{color:var(--text-dim);font-size:.82rem;margin-top:2px}
+  .an-note{color:var(--text-dim);font-size:.8rem;margin-top:10px;line-height:1.5}
+  .empty{color:var(--text-dim);font-size:.9rem;padding:22px 0;text-align:center}
   header h1{font-size:1.35rem;font-weight:600;letter-spacing:-.01em}
   header .sub{color:var(--text-dim);font-size:.85rem;margin-top:4px}
   .info-btn{
@@ -59,6 +82,8 @@
   .prog.up .arrow{color:var(--green)}
   .prog.down .arrow{color:var(--red)}
   .prog.flat .arrow,.prog.base .arrow{color:var(--text-dim)}
+  .trend{font-size:.85rem}
+  .trend.up{color:var(--green)}.trend.down{color:var(--red)}.trend.flat{color:var(--text-dim)}
   .target{color:var(--text-dim);font-size:.95rem;margin-top:8px;line-height:1.4}
   .target b{color:var(--text);font-weight:600}
   .row-links{display:flex;gap:8px;margin-top:12px}
@@ -138,23 +163,35 @@
 
 <header>
   <div>
-    <img class="logo" alt="Recalibration"
-      src="https://images.squarespace-cdn.com/content/v1/66d2a42747a32424bfaefbe7/834960fe-960a-4402-bd41-5b6042b762c9/Recalibration-logo-white.png?format=500w"
-      onerror="this.style.display='none';document.querySelector('.logo-text').style.display='block'">
-    <div class="logo-text">Recalibration</div>
+    <a class="logo-link" href="https://www.recalibrationmassage.com.au/" target="_blank" rel="noopener">
+      <img class="logo" alt="Recalibration"
+        src="https://images.squarespace-cdn.com/content/v1/66d2a42747a32424bfaefbe7/834960fe-960a-4402-bd41-5b6042b762c9/Recalibration-logo-white.png?format=750w"
+        onerror="this.style.display='none';document.querySelector('.logo-text').style.display='block'">
+      <div class="logo-text">Recalibration</div>
+    </a>
     <h1 id="clientName">&nbsp;</h1>
-    <div class="sub">Your program</div>
+    <div class="sub" id="subLine">Your program</div>
   </div>
   <button class="info-btn" onclick="openModal()">i</button>
 </header>
 
-<div class="controls" id="controls" style="display:none">
-  <select class="week" id="weekSelect" onchange="renderWeek()"></select>
-  <div class="due" id="dueLine"></div>
+<div class="tabs" id="tabs" style="display:none">
+  <button class="on" id="tabProgram" onclick="showPane(0)">Program</button>
+  <button id="tabProgress" onclick="showPane(1)">Progress</button>
 </div>
 
-<div id="stateBox" class="state"><div class="spinner"></div>Loading your program…</div>
-<div id="exerciseList"></div>
+<div class="pane on" id="pane0">
+  <div class="controls" id="controls" style="display:none">
+    <select class="week" id="weekSelect" onchange="renderWeek()"></select>
+    <div class="due" id="dueLine"></div>
+  </div>
+  <div id="stateBox" class="state"><div class="spinner"></div>Loading your program…</div>
+  <div id="exerciseList"></div>
+</div>
+
+<div class="pane" id="pane1">
+  <div id="analytics"></div>
+</div>
 
 <div class="overlay" id="modal">
   <div class="modal">
@@ -188,22 +225,42 @@ const fmt = d => new Date(d+"T00:00").toLocaleDateString("en-AU",{weekday:"short
 const fmtShort = d => new Date(d+"T00:00").toLocaleDateString("en-AU",{day:"numeric",month:"short"});
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
+/* Show the last known program straight away, then quietly refresh in the
+   background. Apps Script takes a couple of seconds to wake up, so this makes
+   repeat visits feel instant. */
 async function load(){
   const c = slug();
   const box = document.getElementById("stateBox");
   if(!c){ box.innerHTML = "This link isn't complete.<br>Open the link Ben sent you, then save it again."; return; }
   pinClient(c);
+
+  let shownFromCache = false;
+  try{
+    const cached = localStorage.getItem("program:"+c);
+    if(cached){
+      program = JSON.parse(cached);
+      init();
+      shownFromCache = true;
+    }
+  }catch(e){}
+
   try{
     const r = await fetch(API_URL + "?action=program&client=" + encodeURIComponent(c));
     const data = await r.json();
-    if(data.error){ box.innerHTML = "Couldn't find your program.<br>Check the link Ben sent you."; return; }
-    program = data; init();
+    if(data.error){
+      if(!shownFromCache) box.innerHTML = "Couldn't find your program.<br>Check the link Ben sent you.";
+      return;
+    }
+    program = data;
+    try{ localStorage.setItem("program:"+c, JSON.stringify(data)); }catch(e){}
+    const keepWeek = shownFromCache ? document.getElementById("weekSelect").value : null;
+    init(keepWeek);
   }catch(e){
-    box.innerHTML = "Couldn't load your program.<br>Check your connection and try again.";
+    if(!shownFromCache) box.innerHTML = "Couldn't load your program.<br>Check your connection and try again.";
   }
 }
 
-function init(){
+function init(keepWeek){
   document.getElementById("clientName").textContent = program.name;
   document.title = program.name.split(" ")[0] + " — Recalibration";
   program.weeks.sort((a,b)=> a.start < b.start ? -1 : 1);
@@ -214,13 +271,24 @@ function init(){
   const sel = document.getElementById("weekSelect");
   sel.innerHTML = program.weeks.map((w,i)=>
     '<option value="'+i+'">Week '+(i+1)+' · '+fmtShort(w.start)+'</option>').join("");
-  sel.value = program.weeks.length - 1;
+  sel.value = (keepWeek !== null && keepWeek !== undefined && keepWeek < program.weeks.length)
+    ? keepWeek : program.weeks.length - 1;
   document.getElementById("stateBox").style.display = "none";
   document.getElementById("controls").style.display = "block";
+  document.getElementById("tabs").style.display = "flex";
   renderWeek();
+  renderAnalytics();
   try{
     if(!localStorage.getItem("seenIntro")){ openModal(); localStorage.setItem("seenIntro","1"); }
   }catch(e){}
+}
+
+function showPane(i){
+  document.querySelectorAll(".pane").forEach((p,k)=>p.classList.toggle("on",k===i));
+  document.getElementById("tabProgram").classList.toggle("on", i===0);
+  document.getElementById("tabProgress").classList.toggle("on", i===1);
+  document.getElementById("subLine").textContent = i===0 ? "Your program" : "Your progress";
+  window.scrollTo(0,0);
 }
 
 /* ---------- labels ---------- */
@@ -481,6 +549,8 @@ function card(ex,wi){
       btn.textContent="✓ Saved";
       setTimeout(()=>{ fillInputs(); },1400);
       c.classList.toggle("done", sessionsDone(ex) >= ex.freqNum);
+      renderAnalytics();
+      try{ localStorage.setItem("program:"+slug(), JSON.stringify(program)); }catch(e){}
     }catch(e){
       btn.disabled=false; btn.textContent="Mark complete";
       err.textContent="Couldn't save. Check your connection and try again.";
@@ -490,6 +560,129 @@ function card(ex,wi){
 
   paintSessions(); fillInputs();
   return c;
+}
+
+/* ---------- progress tab ---------- */
+function renderAnalytics(){
+  const el = document.getElementById("analytics");
+  if(!program || !program.weeks.length){ el.innerHTML='<div class="empty">Nothing to show yet.</div>'; return; }
+
+  const wi = program.weeks.length - 1;
+  const wk = program.weeks[wi];
+
+  // sessions this week
+  let done = 0, target = 0;
+  wk.exercises.forEach(ex=>{ target += ex.freqNum || 1; done += sessionsDone(ex); });
+
+  // consecutive weeks with at least one session logged
+  let streak = 0;
+  for(let i = program.weeks.length - 1; i >= 0; i--){
+    const any = program.weeks[i].exercises.some(ex => sessionsDone(ex) > 0);
+    if(any) streak++; else break;
+  }
+
+  // exercises appearing in 2+ weeks with load logged, for the chart
+  const seenIn = {};
+  program.weeks.forEach(w=>{
+    const s={};
+    w.exercises.forEach(e=>{ if(!s[e.name]){ s[e.name]=1; seenIn[e.name]=(seenIn[e.name]||0)+1; } });
+  });
+  const chartable = Object.keys(seenIn).filter(n=>seenIn[n]>=2);
+
+  let html =
+    '<div class="an-card"><div class="stat">'+
+      '<div class="big">'+done+'<small>of '+target+' sessions this week</small></div>'+
+      '<div style="margin-left:auto;text-align:right">'+
+        '<div class="big" style="font-size:1.4rem">'+streak+'<small>week'+(streak===1?"":"s")+' in a row</small></div>'+
+      '</div>'+
+    '</div></div>';
+
+  if(chartable.length){
+    html += '<div class="an-card">'+
+      '<h3>Over time</h3><div class="an-sub">Compared with your first week</div>'+
+      '<div style="margin-top:14px"><select class="week" id="anEx" onchange="drawAnChart()">'+
+        chartable.map(n=>'<option>'+esc(n)+'</option>').join("")+
+      '</select></div><div id="anChart" style="margin-top:16px"></div>'+
+      '<div class="an-note" id="anNote"></div></div>';
+  }
+
+  html += '<div class="an-card"><h3>This week</h3><div style="margin-top:6px">';
+  wk.exercises.forEach(ex=>{
+    const n = ex.freqNum || 1;
+    const d = sessionsDone(ex);
+    let t = '<span class="trend flat">—</span>';
+    if(ex.type !== "mobility"){
+      const bi = baseline[ex.name];
+      if(bi === wi) t = '<span class="trend flat">Week 1</span>';
+      else{
+        const bx = program.weeks[bi].exercises.find(e=>e.name===ex.name);
+        const bv = bx?avgPerSet(bx):null, cv = avgPerSet(ex);
+        if(bv && cv){
+          const pct = Math.round((cv-bv)/bv*100);
+          const cls = pct>0?"up":(pct<0?"down":"flat");
+          const ar = pct>0?"▲":(pct<0?"▼":"–");
+          t = '<span class="trend '+cls+'">'+ar+' '+(pct>0?"+":"")+pct+'%</span>';
+        }
+      }
+    }
+    let spark = "";
+    for(let s=1;s<=n;s++){
+      const on = sessionComplete(ex,s);
+      spark += '<i class="'+(on?"on":"")+'" style="height:'+(on?20:7)+'px"></i>';
+    }
+    html += '<div class="exline"><div><div class="nm">'+esc(ex.name)+'</div>'+
+      '<div class="val">'+d+' of '+n+' session'+(n===1?"":"s")+'</div></div>'+
+      '<div style="text-align:right"><div class="spark">'+spark+'</div>'+
+      '<div style="margin-top:6px">'+t+'</div></div></div>';
+  });
+  html += '</div></div>';
+
+  el.innerHTML = html;
+  if(chartable.length) drawAnChart();
+}
+
+function drawAnChart(){
+  const sel = document.getElementById("anEx");
+  if(!sel) return;
+  const name = sel.value;
+  const pts = [];
+  program.weeks.forEach((w,i)=>{
+    const ex = w.exercises.find(e=>e.name===name);
+    if(!ex) return;
+    const v = avgPerSet(ex);
+    pts.push({ label:"Wk "+(i+1), v: v });
+  });
+  const withVals = pts.filter(p=>p.v);
+  const max = withVals.length ? Math.max(...withVals.map(p=>p.v)) : 1;
+  const n = pts.length, bw = 64, gap = 34, pad = 16;
+  const W = Math.max(300, pad*2 + n*bw + (n-1)*gap), H = 160;
+  let svg = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="overflow:visible">';
+  pts.forEach((p,i)=>{
+    const x = pad + i*(bw+gap);
+    if(!p.v){
+      svg += '<rect x="'+x+'" y="'+(H-34)+'" width="'+bw+'" height="4" rx="2" fill="#2b3a3a"/>';
+    }else{
+      const h = Math.max(6, Math.round(p.v/max*(H-58)));
+      const y = H-30-h;
+      svg += '<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="5" fill="'+(i===0?"#3b4d4d":"#c25b41")+'"/>';
+      svg += '<text x="'+(x+bw/2)+'" y="'+(y-8)+'" fill="#d5dddd" font-size="12" text-anchor="middle">'+
+             (Math.round(p.v*10)/10)+'</text>';
+    }
+    svg += '<text x="'+(x+bw/2)+'" y="'+(H-10)+'" fill="#94a5a5" font-size="11" text-anchor="middle">'+p.label+'</text>';
+  });
+  svg += '</svg>';
+  document.getElementById("anChart").innerHTML = svg;
+
+  const note = document.getElementById("anNote");
+  if(withVals.length >= 2){
+    const first = withVals[0].v, last = withVals[withVals.length-1].v;
+    const pct = Math.round((last-first)/first*100);
+    note.textContent = pct>0 ? "Up "+pct+"% since week 1."
+                     : pct<0 ? "Down "+Math.abs(pct)+"% since week 1."
+                     : "Holding steady since week 1.";
+  }else{
+    note.textContent = "Log this exercise in more than one week to see a trend.";
+  }
 }
 
 function openModal(){document.getElementById("modal").classList.add("open")}

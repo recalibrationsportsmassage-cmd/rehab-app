@@ -59,6 +59,9 @@
     color:var(--text-dim);margin-bottom:8px;
   }
   table{width:100%;border-collapse:collapse;font-size:.88rem}
+  /* fixed layout so columns don't jump around when the week changes */
+  table.fixed{table-layout:fixed}
+  table.fixed td{overflow-wrap:anywhere}
   th{
     text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;
     color:var(--text-dim);font-weight:500;padding:0 12px 10px 0;white-space:nowrap;
@@ -222,7 +225,11 @@
   </div>
 
   <div class="card">
-    <table>
+    <table class="fixed">
+      <colgroup>
+        <col style="width:26%"><col style="width:10%"><col style="width:16%">
+        <col style="width:14%"><col style="width:11%"><col style="width:23%">
+      </colgroup>
       <thead>
         <tr>
           <th>Exercise</th><th>Type</th><th>Adherence</th>
@@ -233,7 +240,7 @@
     </table>
   </div>
 
-  <div class="card">
+  <div class="card" id="wowCard">
     <div class="row spread">
       <h2 style="font-size:.95rem">Week on week</h2>
       <div class="row" style="gap:10px">
@@ -286,15 +293,26 @@ let PW = "";
 let clients = [], library = [], rows = [], current = null, progData = null;
 
 /* ---------------- api ---------------- */
+/* Never throw: always resolve to an object with either data or .error,
+   so a failed call can't leave a button stuck mid-save. */
+async function readJson(r){
+  const text = await r.text();
+  try{ return JSON.parse(text); }
+  catch(e){ return { error:"bad_response", detail:text.slice(0,200) }; }
+}
 async function apiGet(params){
-  const q = new URLSearchParams(Object.assign({pw:PW}, params));
-  const r = await fetch(API_URL + "?" + q.toString());
-  return r.json();
+  try{
+    const q = new URLSearchParams(Object.assign({pw:PW}, params));
+    const r = await fetch(API_URL + "?" + q.toString());
+    return readJson(r);
+  }catch(e){ return { error:"network" }; }
 }
 async function apiPost(body){
-  const r = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"},
-    body: JSON.stringify(Object.assign({pw:PW}, body))});
-  return r.json();
+  try{
+    const r = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"},
+      body: JSON.stringify(Object.assign({pw:PW}, body))});
+    return readJson(r);
+  }catch(e){ return { error:"network" }; }
 }
 
 /* ---------------- login ---------------- */
@@ -444,7 +462,11 @@ async function saveWeek(){
   btn.disabled=true; btn.textContent="Saving…";
   const res = await apiPost({action:"saveWeek", client:current.slug, start:start, end:end, rows:valid});
   btn.disabled=false; btn.textContent="Save week";
-  if(res.error){ toast("Couldn't save — "+res.error); return; }
+  if(res.error){
+    toast("Couldn't save — " + (res.detail || res.error));
+    console.error("saveWeek failed:", res);
+    return;
+  }
   toast("Saved — "+res.added+" rows added");
   rows=[blank()]; render();
   document.getElementById("wkStart").value=""; document.getElementById("wkEnd").value="";
@@ -513,12 +535,22 @@ function toggleNote(i){ noteOpen[i]=!noteOpen[i]; renderProgress(); }
 /* ---------------- week on week ---------------- */
 function renderWowOptions(){
   if(!progData) return;
-  const names=[];
-  progData.weeks.forEach(w=>w.exercises.forEach(e=>{ if(names.indexOf(e.name)===-1) names.push(e.name); }));
-  document.getElementById("wowEx").innerHTML=names.map(n=>'<option>'+n+'</option>').join("");
+  // only exercises prescribed in two or more weeks — nothing to compare otherwise
+  const count={};
+  progData.weeks.forEach(w=>{
+    const seen={};
+    w.exercises.forEach(e=>{ if(!seen[e.name]){ seen[e.name]=1; count[e.name]=(count[e.name]||0)+1; } });
+  });
+  const names=Object.keys(count).filter(n=>count[n]>=2);
+  const sel=document.getElementById("wowEx");
+  sel.innerHTML = names.length
+    ? names.map(n=>'<option>'+n+'</option>').join("")
+    : '<option value="">No repeated exercises yet</option>';
+  document.getElementById("wowCard").style.display = names.length ? "block" : "none";
 }
 function renderWow(){
   if(!progData || !progData.weeks.length) return;
+  if(!document.getElementById("wowEx").value) return;
   const name=document.getElementById("wowEx").value;
   const metric=document.getElementById("wowMetric").value;
   const series=progData.weeks.map((w,i)=>{
