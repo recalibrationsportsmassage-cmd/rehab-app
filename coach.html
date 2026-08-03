@@ -197,8 +197,8 @@
         <label class="f">Times per week</label>
         <select id="wkFreq" onchange="syncFreq()">
           <option value="">–</option>
-          <option>1×</option><option>2×</option><option>3×</option>
-          <option>4×</option><option>5×</option><option>Daily</option><option>As needed</option>
+          <option>1x</option><option>2x</option><option>3x</option>
+          <option>4x</option><option>5x</option><option>Daily</option><option>As needed</option>
         </select>
       </div>
     </div>
@@ -422,7 +422,7 @@ function rowHtml(r,i){
     '<div><label class="f">Each side</label><select onchange="setF('+i+',\'side\',this.value)">'+
       '<option value="">–</option>'+["No","Yes"].map(u=>opt(u,r.side)).join("")+'</select></div>'+
     '<div><label class="f">Per week</label><select onchange="setF('+i+',\'freq\',this.value)">'+
-      '<option value="">–</option>'+["1×","2×","3×","4×","5×","Daily","As needed"].map(f=>opt(f,r.freq)).join("")+'</select></div>'+
+      '<option value="">–</option>'+["1x","2x","3x","4x","5x","Daily","As needed"].map(f=>opt(f,r.freq)).join("")+'</select></div>'+
     '<div><button class="del" onclick="rmRow('+i+')">✕</button></div>'+
   '</div>';
 }
