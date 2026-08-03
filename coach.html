@@ -467,7 +467,7 @@ async function saveWeek(){
     console.error("saveWeek failed:", res);
     return;
   }
-  toast("Saved — "+res.added+" rows added");
+  toast("Saved — "+res.added+" rows added from row "+res.firstRow);
   rows=[blank()]; render();
   document.getElementById("wkStart").value=""; document.getElementById("wkEnd").value="";
   loadClients();
