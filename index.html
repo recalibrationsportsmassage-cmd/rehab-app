@@ -10,8 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Recalibration">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=7">
+<link rel="shortcut icon" type="image/png" href="icon-192.png?v=7">
+<link rel="apple-touch-icon" href="icon-192.png?v=7">
 <title>Recalibration — Program</title>
 <style>
   :root{
@@ -32,7 +33,9 @@
   .titlebar{display:flex;align-items:center;justify-content:space-between;gap:12px}
   .vs{font-size:.72rem;color:var(--text-dim);margin-top:2px}
   .logo-text{font-size:.95rem;text-transform:uppercase;letter-spacing:.18em;color:var(--accent);display:none;text-decoration:none}
-  .tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin:16px 0 4px}
+  .tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin:16px 0 0}
+  /* both panes start at the same offset so switching tabs doesn't shift the page */
+  .pane{padding-top:12px}
   .tabs button{
     background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);
     padding:10px 14px;font-size:.92rem;cursor:pointer;font-family:inherit;
@@ -61,7 +64,7 @@
     background:var(--surface);border:1px solid var(--border);color:var(--text-dim);
     width:34px;height:34px;border-radius:50%;font-size:.9rem;cursor:pointer;flex-shrink:0;
   }
-  .controls{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 0}
+  .controls{padding:0 0 4px}
   select.week{
     width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);
     border-radius:var(--radius);padding:12px 14px;font-size:1rem;
@@ -172,10 +175,7 @@
     <div class="logo-text">Recalibration</div>
   </a>
   <div class="titlebar">
-    <div>
-      <h1 id="clientName">&nbsp;</h1>
-      <div class="sub" id="subLine">Your program</div>
-    </div>
+    <h1 id="clientName">&nbsp;</h1>
     <button class="info-btn" onclick="openModal()">i</button>
   </div>
 </header>
@@ -187,7 +187,7 @@
 
 <div class="pane on" id="pane0">
   <div class="controls" id="controls" style="display:none">
-    <select class="week" id="weekSelect" onchange="renderWeek()"></select>
+    <select class="week" id="weekSelect" onchange="userPickedWeek=true;renderWeek()"></select>
     <div class="due" id="dueLine"></div>
   </div>
   <div id="stateBox" class="state"><div class="spinner"></div>Loading your program…</div>
@@ -214,7 +214,7 @@
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbwyQ3RzOItJDLmBTEyGsPx9FKnwoZgkwFxnKn3ekEO-qrTbzjHUYoBEfjZEAQXSgB3f/exec";
 
-let program = null, baseline = {};
+let program = null, baseline = {}, userPickedWeek = false;
 
 function slug(){
   const fromUrl = (location.hash.replace(/^#\/?/,"") ||
@@ -241,11 +241,15 @@ async function load(){
 
   let shownFromCache = false;
   try{
-    const cached = localStorage.getItem("program:"+c);
-    if(cached){
-      program = JSON.parse(cached);
-      init();
-      shownFromCache = true;
+    const raw = localStorage.getItem("program:"+c);
+    if(raw){
+      const wrap = JSON.parse(raw);
+      // ignore anything older than a day so a failed refresh can't strand them
+      if(wrap && wrap.at && (Date.now() - wrap.at) < 86400000 && wrap.data){
+        program = wrap.data;
+        init();
+        shownFromCache = true;
+      }
     }
   }catch(e){}
 
@@ -256,13 +260,30 @@ async function load(){
       if(!shownFromCache) box.innerHTML = "Couldn't find your program.<br>Check the link Ben sent you.";
       return;
     }
+    const hadWeeks = program ? program.weeks.length : 0;
     program = data;
-    try{ localStorage.setItem("program:"+c, JSON.stringify(data)); }catch(e){}
-    const keepWeek = shownFromCache ? document.getElementById("weekSelect").value : null;
+    try{ localStorage.setItem("program:"+c, JSON.stringify({at:Date.now(), data:data})); }catch(e){}
+    // keep their spot only if the number of weeks hasn't changed — if Ben has
+    // added a week since, jump them to the newest one
+    const keepWeek = (shownFromCache && userPickedWeek && data.weeks.length === hadWeeks)
+      ? document.getElementById("weekSelect").value : null;
     init(keepWeek);
   }catch(e){
     if(!shownFromCache) box.innerHTML = "Couldn't load your program.<br>Check your connection and try again.";
   }
+}
+
+/* Refresh from the sheet without a page reload */
+async function refreshProgram(){
+  const c = slug(); if(!c) return;
+  try{
+    const r = await fetch(API_URL + "?action=program&fresh=1&client=" + encodeURIComponent(c));
+    const data = await r.json();
+    if(data.error) return;
+    program = data;
+    try{ localStorage.setItem("program:"+c, JSON.stringify({at:Date.now(), data:data})); }catch(e){}
+    init(null);
+  }catch(e){}
 }
 
 function init(keepWeek){
@@ -292,7 +313,6 @@ function showPane(i){
   document.querySelectorAll(".pane").forEach((p,k)=>p.classList.toggle("on",k===i));
   document.getElementById("tabProgram").classList.toggle("on", i===0);
   document.getElementById("tabProgress").classList.toggle("on", i===1);
-  document.getElementById("subLine").textContent = i===0 ? "Your program" : "Your progress";
   window.scrollTo(0,0);
 }
 

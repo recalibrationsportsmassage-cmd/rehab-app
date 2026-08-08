@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=7">
+<link rel="shortcut icon" type="image/png" href="icon-192.png?v=7">
 <title>Recalibration — Coach</title>
 <style>
   :root{
@@ -120,6 +122,24 @@
   #login .modal{max-width:340px}
   #app{display:none}
   .empty{color:var(--text-dim);font-size:.9rem;padding:26px 0}
+  .secthead{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+  .secthead h3{font-size:.95rem;font-weight:600}
+  .opt{font-size:.72rem;color:var(--text-dim)}
+  .problems{
+    display:none;margin-top:14px;background:var(--surface);border:1px solid var(--red);
+    border-radius:var(--radius);padding:14px 16px;
+  }
+  .problems.on{display:block}
+  .problems h4{font-size:.85rem;color:var(--red);margin-bottom:8px;font-weight:600}
+  .problems ul{list-style:none}
+  .problems li{font-size:.85rem;color:var(--text);line-height:1.6;padding-left:16px;position:relative}
+  .problems li::before{content:"•";position:absolute;left:0;color:var(--red)}
+  .pill.warn{color:var(--amber,#d9a441);border-color:#5c4a27}
+  .urlbox{
+    display:flex;gap:8px;align-items:center;margin-top:10px;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 8px 8px 12px;
+  }
+  .urlbox code{font-size:.82rem;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
   .chartwrap{overflow-x:auto;padding-top:8px}
   .legend{display:flex;gap:16px;font-size:.78rem;color:var(--text-dim);margin-top:12px;flex-wrap:wrap}
   .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
@@ -186,8 +206,13 @@
 <div class="view" id="v1">
   <div class="row spread">
     <h2 id="buildFor">New week</h2>
-    <button class="btn ghost sm" onclick="copyLast()">Copy last week</button>
+    <div class="row" style="gap:8px">
+      <button class="btn ghost sm" onclick="copyClientUrl()">Copy client's URL</button>
+      <button class="btn ghost sm" onclick="copyLast()">Copy last week</button>
+    </div>
   </div>
+  <div class="urlbox"><code id="clientUrl">—</code>
+    <button class="btn ghost sm" onclick="copyClientUrl()">Copy</button></div>
 
   <div class="card">
     <div class="grid3">
@@ -205,9 +230,18 @@
   </div>
 
   <div class="card">
-    <div id="exList"></div>
-    <button class="btn ghost sm" style="margin-top:16px" onclick="addRow()">+ Add exercise</button>
+    <div class="secthead"><h3>Mobility</h3><span class="opt">optional</span></div>
+    <div id="exListMobility"></div>
+    <button class="btn ghost sm" style="margin-top:14px" onclick="addRow('mobility')">+ Add mobility exercise</button>
   </div>
+
+  <div class="card">
+    <div class="secthead"><h3>Strength</h3><span class="opt">optional</span></div>
+    <div id="exListStrength"></div>
+    <button class="btn ghost sm" style="margin-top:14px" onclick="addRow('strength')">+ Add strength exercise</button>
+  </div>
+
+  <div id="saveProblems" class="problems"></div>
 
   <div class="row" style="margin-top:16px;justify-content:flex-end">
     <button class="btn ghost" onclick="go(0,document.getElementById('tab0'))">Cancel</button>
@@ -220,6 +254,7 @@
     <h2 id="progFor">Progress</h2>
     <div class="row" style="gap:10px">
       <select class="auto" id="progWeek" onchange="renderProgress()"></select>
+      <button class="btn ghost sm" onclick="refreshProgress()">Refresh</button>
       <button class="btn ghost sm" onclick="window.print()">Download report</button>
     </div>
   </div>
@@ -347,6 +382,7 @@ function showClientTabs(c){
   document.getElementById("tab2").classList.remove("hide");
   document.getElementById("buildFor").textContent = c.name + " — new week";
   document.getElementById("progFor").textContent = c.name;
+  document.getElementById("clientUrl").textContent = SITE + "/#/" + c.slug;
 }
 
 /* ---------------- clients ---------------- */
@@ -385,11 +421,22 @@ async function openClient(slug){
   const c = clients.find(x=>x.slug===slug);
   if(!c) return;
   showClientTabs(c);
-  rows=[blank()]; render();
+  rows=[blank("mobility")]; render();
+  showProblems(null);
   go(2, document.getElementById("tab2"));
-  document.getElementById("progBody").innerHTML='<tr><td colspan="6" class="empty">Loading…</td></tr>';
-  progData = await apiGet({action:"progress", client:slug});
-  if(progData.error){ toast("Couldn't load progress"); return; }
+  await refreshProgress();
+}
+
+/** Pull progress straight from the sheet, bypassing the server cache. */
+async function refreshProgress(){
+  if(!current) return;
+  const body=document.getElementById("progBody");
+  body.innerHTML='<tr><td colspan="6" class="empty">Loading…</td></tr>';
+  progData = await apiGet({action:"progress", client:current.slug, fresh:"1"});
+  if(progData.error){
+    body.innerHTML='<tr><td colspan="6" class="empty">Couldn\'t load progress.</td></tr>';
+    return;
+  }
   const sel=document.getElementById("progWeek");
   sel.innerHTML = progData.weeks.map((w,i)=>
     '<option value="'+i+'">Week '+(i+1)+' · '+fmtDue(w.start)+'</option>').join("");
@@ -397,21 +444,49 @@ async function openClient(slug){
   renderProgress(); renderWowOptions(); renderWow();
 }
 
+function clientUrl(){
+  return current ? "https://"+SITE+"/#/"+current.slug : "";
+}
+function copyClientUrl(){
+  const u = clientUrl();
+  if(!u){ toast("Pick a client first"); return; }
+  navigator.clipboard.writeText(u).then(
+    ()=>toast("Link copied"),
+    ()=>{
+      const t=document.createElement("textarea");
+      t.value=u; document.body.appendChild(t); t.select();
+      try{ document.execCommand("copy"); toast("Link copied"); }
+      catch(e){ toast("Couldn't copy — select it manually"); }
+      document.body.removeChild(t);
+    }
+  );
+}
+
 /* ---------------- week builder ---------------- */
-function blank(){
-  return {ex:"",sets:"",target:"",reps:"",unit:"",side:"",freq:document.getElementById("wkFreq").value||"",note:""};
+function blank(sec){
+  return {sec:sec||"strength",ex:"",sets:"",target:"",reps:"",unit:"",side:"",
+          freq:document.getElementById("wkFreq").value||"",note:""};
+}
+/** Exercises offered in a section: that type, plus any with no Type set. */
+function libFor(sec){
+  const want = sec==="mobility" ? "Mobility" : "Strength";
+  return library.filter(l => l.type===want || !l.type);
 }
 function rowHtml(r,i){
   const lib = library.find(l=>l.name===r.ex);
   const type = lib ? lib.type : "";
-  const isMob = type==="Mobility";
-  const targets = !type ? [] : (isMob ? ["Low","Mod"] : ["0 RIR","1 RIR","2 RIR","3 RIR"]);
-  const typePill = type ? '<span class="pill '+(isMob?"mob":"str")+'">'+type+'</span>' : '';
+  const isMob = r.sec==="mobility";
+  const targets = isMob ? ["Low","Mod"] : ["0 RIR","1 RIR","2 RIR","3 RIR"];
+  // only label when the Matrix actually says so — never guess
+  const typePill = r.ex
+    ? (type ? '<span class="pill '+(type==="Mobility"?"mob":"str")+'">'+type+'</span>'
+            : '<span class="pill warn" title="Add a Type in the Exercise Matrix">Type not set</span>')
+    : '';
   const opt=(v,cur)=>'<option'+(v===cur?' selected':'')+'>'+v+'</option>';
   return '<div class="exrow">'+
     '<div><label class="f">Exercise '+typePill+'</label>'+
       '<select onchange="setF('+i+',\'ex\',this.value);render()"><option value="">Select…</option>'+
-      library.map(l=>opt(l.name,r.ex)).join("")+'</select></div>'+
+      libFor(r.sec).map(l=>opt(l.name,r.ex)).join("")+'</select></div>'+
     '<div><label class="f">Sets</label><select onchange="setF('+i+',\'sets\',this.value)">'+
       '<option value="">–</option>'+[1,2,3].map(s=>opt(String(s),String(r.sets))).join("")+'</select></div>'+
     '<div><label class="f">Intensity</label><select onchange="setF('+i+',\'target\',this.value)">'+
@@ -427,12 +502,20 @@ function rowHtml(r,i){
   '</div>';
 }
 function render(){
-  if(!rows.length) rows=[blank()];
-  document.getElementById("exList").innerHTML = rows.map(rowHtml).join("");
+  const mob=[], str=[];
+  rows.forEach((r,i)=>{ (r.sec==="mobility" ? mob : str).push(rowHtml(r,i)); });
+  document.getElementById("exListMobility").innerHTML =
+    mob.length ? mob.join("") : '<div class="empty" style="padding:12px 0">No mobility exercises.</div>';
+  document.getElementById("exListStrength").innerHTML =
+    str.length ? str.join("") : '<div class="empty" style="padding:12px 0">No strength exercises.</div>';
 }
 function setF(i,k,v){ rows[i][k]=v; }
-function addRow(){ rows.push(blank()); render(); }
+function addRow(sec){ rows.push(blank(sec)); render(); }
 function rmRow(i){ rows.splice(i,1); render(); }
+/** Mobility first, then strength — the same order the client sees. */
+function orderedRows(){
+  return rows.filter(r=>r.sec==="mobility").concat(rows.filter(r=>r.sec!=="mobility"));
+}
 function syncFreq(){
   const f=document.getElementById("wkFreq").value;
   rows.forEach(r=>{ if(!r.freq) r.freq=f; });
@@ -444,6 +527,7 @@ async function copyLast(){
   if(!p.weeks || !p.weeks.length){ toast("No previous week to copy"); return; }
   const last = p.weeks[p.weeks.length-1];
   rows = last.exercises.map(e=>({
+    sec: e.type==="mobility" ? "mobility" : "strength",
     ex:e.name, sets:String(e.sets||""), target:e.target||"",
     reps:e.reps||"", unit:e.unit||"", side:e.perSide?"Yes":"No",
     freq:e.freq||"", note:""
@@ -451,26 +535,52 @@ async function copyLast(){
   render();
   toast("Copied "+rows.length+" exercises");
 }
+function showProblems(list){
+  const box=document.getElementById("saveProblems");
+  if(!list || !list.length){ box.classList.remove("on"); box.innerHTML=""; return; }
+  box.innerHTML='<h4>Not saved — fix these first</h4><ul>'+
+    list.map(p=>'<li>'+p+'</li>').join("")+'</ul>';
+  box.classList.add("on");
+  box.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
 async function saveWeek(){
+  showProblems(null);
   if(!current){ toast("Pick a client first"); return; }
   const start=document.getElementById("wkStart").value;
   const end=document.getElementById("wkEnd").value;
-  if(!start || !end){ toast("Set a start and due date"); return; }
-  const valid = rows.filter(r=>r.ex);
-  if(!valid.length){ toast("Add at least one exercise"); return; }
+  const local=[];
+  if(!start) local.push("No start date set");
+  if(!end) local.push("No due date set");
+  if(start && end && end < start) local.push("Due date is before the start date");
+
+  const valid = orderedRows().filter(r=>r.ex);
+  if(!valid.length) local.push("Add at least one exercise (mobility or strength)");
+  valid.forEach(r=>{
+    if(!r.sets) local.push(r.ex+": no sets selected");
+    if(!r.target) local.push(r.ex+": no intensity selected");
+    if(!r.reps) local.push(r.ex+": no reps entered");
+    if(!r.unit) local.push(r.ex+": no rep unit selected");
+    if(!r.freq) local.push(r.ex+": no frequency selected");
+  });
+  if(local.length){ showProblems(local); return; }
+
   const btn=document.getElementById("saveWeekBtn");
   btn.disabled=true; btn.textContent="Saving…";
   const res = await apiPost({action:"saveWeek", client:current.slug, start:start, end:end, rows:valid});
   btn.disabled=false; btn.textContent="Save week";
+
+  if(res.problems){ showProblems(res.problems); return; }
   if(res.error){
-    toast("Couldn't save — " + (res.detail || res.error));
+    showProblems([res.detail || res.error]);
     console.error("saveWeek failed:", res);
     return;
   }
   toast("Saved — "+res.added+" rows added from row "+res.firstRow);
-  rows=[blank()]; render();
+  rows=[blank("mobility")]; render();
   document.getElementById("wkStart").value=""; document.getElementById("wkEnd").value="";
-  loadClients();
+  await loadClients();
+  await refreshProgress();   // keep the Progress tab in step
 }
 
 /* ---------------- progress ---------------- */
@@ -630,7 +740,7 @@ async function createClient(){
   document.getElementById("fn").value=""; document.getElementById("ln").value="";
   await loadClients();
   const c=clients.find(x=>x.slug===res.slug);
-  if(c){ showClientTabs(c); rows=[blank()]; render(); go(1,document.getElementById("tab1")); }
+  if(c){ showClientTabs(c); rows=[blank("mobility")]; render(); go(1,document.getElementById("tab1")); }
   toast("Created — "+res.name);
 }
 
