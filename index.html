@@ -61,7 +61,47 @@
   .an-card h3{font-size:.95rem;font-weight:600}
   .an-sub{color:var(--text-dim);font-size:.82rem;margin-top:2px}
   .an-note{color:var(--text-dim);font-size:.8rem;margin-top:10px;line-height:1.5}
+  /* the chart keeps a readable bar width and scrolls rather than shrinking */
+  .chartscroll{
+    margin-top:16px;overflow-x:auto;overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;padding-bottom:4px;
+  }
+  .chartscroll::-webkit-scrollbar{height:6px}
+  .chartscroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
   .empty{color:var(--text-dim);font-size:.9rem;padding:22px 0;text-align:center}
+  /* ---- guide ---- */
+  .guide-list{list-style:none;margin-top:10px}
+  .guide-list li{
+    font-size:.9rem;color:var(--text-dim);line-height:1.55;
+    padding:5px 0 5px 16px;position:relative;
+  }
+  .guide-list li::before{content:"–";position:absolute;left:0;color:var(--accent)}
+  .guide-p{font-size:.9rem;color:var(--text-dim);line-height:1.6;margin-top:10px}
+  .guide-p b{color:var(--text);font-weight:600}
+  .rir{margin-top:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .rir-row{
+    display:grid;grid-template-columns:52px 1fr;gap:10px;
+    padding:9px 12px;border-top:1px solid var(--border);
+    font-size:.88rem;color:var(--text-dim);
+  }
+  .rir-row:first-child{border-top:none}
+  .rir-row span:first-child{color:var(--text);font-weight:600;text-align:center}
+  .rir-head{
+    background:var(--surface-2);font-size:.68rem;text-transform:uppercase;
+    letter-spacing:.07em;color:var(--text-dim);
+  }
+  .rir-head span:first-child{color:var(--text-dim);font-weight:500}
+  .review{
+    margin-top:22px;padding:18px 16px;border-top:1px solid var(--border);text-align:center;
+  }
+  .review p{font-size:.88rem;color:var(--text-dim);line-height:1.6}
+  .review .sig{margin-top:8px}
+  .review-btn{
+    display:inline-block;margin-top:14px;background:var(--surface-2);
+    border:1px solid var(--border);color:var(--accent);
+    border-radius:8px;padding:11px 20px;font-size:.88rem;text-decoration:none;
+  }
+  .review-btn:hover{border-color:var(--accent)}
   header h1{font-size:1.35rem;font-weight:600;letter-spacing:-.01em}
   header .sub{color:var(--text-dim);font-size:.85rem;margin-top:4px}
   .info-btn{
@@ -195,6 +235,7 @@
 <div class="tabs" id="tabs" style="display:none">
   <button class="on" id="tabProgram" onclick="showPane(0)">Program</button>
   <button id="tabProgress" onclick="showPane(1)">Progress</button>
+  <button id="tabGuide" onclick="showPane(2)">Guide</button>
 </div>
 
 <div class="pane on" id="pane0">
@@ -210,15 +251,47 @@
   <div id="analytics"></div>
 </div>
 
+<div class="pane" id="pane2">
+  <div class="an-card">
+    <h3>How to approach these</h3>
+    <ul class="guide-list">
+      <li>Keep the movement relaxed and easy</li>
+      <li>Breathe through each rep to help your body settle</li>
+      <li>Pain isn't the goal — ease into range and build over time</li>
+      <li>Support your recovery by eating well, staying hydrated, sleeping well and managing stress as best you can</li>
+    </ul>
+  </div>
+
+  <div class="an-card">
+    <h3>Reading intensity</h3>
+    <p class="guide-p">Some exercises use <b>RIR</b> — reps in reserve. It's how many more reps you could have done when you stopped.</p>
+    <div class="rir">
+      <div class="rir-row rir-head"><span>RIR</span><span>What it felt like</span></div>
+      <div class="rir-row"><span>3</span><span>Comfortable, plenty left</span></div>
+      <div class="rir-row"><span>2</span><span>Working, but controlled</span></div>
+      <div class="rir-row"><span>1</span><span>Hard, one more at most</span></div>
+      <div class="rir-row"><span>0</span><span>Nothing left, form starting to go</span></div>
+    </div>
+    <p class="guide-p">Your target sits next to each exercise. If you log a higher number than the target, the field turns red — that means the set was easier than intended, so add a little load next time.</p>
+    <p class="guide-p">Mobility work uses <b>Low</b> or <b>Mod</b> instead. Low should feel easy and unforced. Mod is noticeable but never painful.</p>
+  </div>
+
+  <div class="review">
+    <p>If the treatment and these exercises have helped, a Google review means a lot to my small practice.</p>
+    <p class="sig">Thanks, Ben.</p>
+    <a class="review-btn" href="https://share.google/RaVJ76kEEzwPNb8vh" target="_blank" rel="noopener">Leave a review →</a>
+  </div>
+</div>
+
 <div class="overlay" id="modal">
   <div class="modal">
     <h3>How this works</h3>
     <p>Use the dropdown at the top to move between weeks. Each exercise shows the sets, reps and intensity.</p>
-    <p>For some exercises, we'll track intensity as <b>Reps in Reserve (RIR)</b> — how many reps you had left before failure. 0 means you couldn't have done another rep.</p>
-    <p>Some exercises are done more than once a week. Pick the session you're logging, then enter your load, reps and intensity for each set.</p>
+    <p>Some exercises are done more than once a week. Work through the sessions in order — the next one unlocks once you've logged the one before.</p>
     <p>The badge next to each exercise shows how you're tracking against your first week. Tap it to see the number.</p>
     <p>Notes are optional, but if something feels better, the same or worse, write it down.</p>
     <p>Aim to have everything done 12 hours before our follow-up session.</p>
+    <p>There's more on intensity and how to approach the drills under <b>Guide</b>.</p>
     <button class="save" onclick="closeModal()">Got it</button>
   </div>
 </div>
@@ -360,6 +433,7 @@ function showPane(i){
   document.querySelectorAll(".pane").forEach((p,k)=>p.classList.toggle("on",k===i));
   document.getElementById("tabProgram").classList.toggle("on", i===0);
   document.getElementById("tabProgress").classList.toggle("on", i===1);
+  document.getElementById("tabGuide").classList.toggle("on", i===2);
   window.scrollTo(0,0);
 }
 
@@ -715,7 +789,7 @@ function renderAnalytics(){
       '<div class="an-sub" id="anMetric"></div>'+
       '<div style="margin-top:14px"><select class="week" id="anEx" onchange="drawAnChart()">'+
         chartable.map(n=>'<option>'+esc(n)+'</option>').join("")+
-      '</select></div><div id="anChart" style="margin-top:16px"></div>'+
+      '</select></div><div id="anChart" class="chartscroll"></div>'+
       '<div class="an-note" id="anNote"></div></div>';
   }
 
@@ -762,7 +836,7 @@ function drawAnChart(){
   const sel = document.getElementById("anEx");
   if(!sel) return;
   const name = sel.value;
-  const pts = [];
+  const all = [];
   let loaded = false, timed = false;
   program.weeks.forEach((w,i)=>{
     const ex = w.exercises.find(e=>e.name===name);
@@ -770,8 +844,12 @@ function drawAnChart(){
     if(hasLoad(ex)) loaded = true;
     if((ex.unit||"").toLowerCase().indexOf("sec")===0) timed = true;
     const v = avgPerSet(ex);
-    pts.push({ label:"Wk "+(i+1), v: v });
+    all.push({ label:"Wk "+(i+1), v: v });
   });
+  // long programs: chart the most recent 12, the rest scrolls off the left
+  const MAX_BARS = 12;
+  const pts = all.slice(-MAX_BARS);
+  const trimmed = all.length - pts.length;
   // what the numbers actually mean, so a bare "6" never appears on its own
   let suffix, blurb;
   if(loaded){ suffix = " kg·reps"; blurb = "Average work per set — load multiplied by reps"; }
@@ -780,9 +858,11 @@ function drawAnChart(){
   document.getElementById("anMetric").textContent = blurb;
   const withVals = pts.filter(p=>p.v);
   const max = withVals.length ? Math.max(...withVals.map(p=>p.v)) : 1;
-  const n = pts.length, bw = 64, gap = 34, pad = 16;
-  const W = Math.max(300, pad*2 + n*bw + (n-1)*gap), H = 160;
-  let svg = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="overflow:visible">';
+  /* Fixed bar width, and the container scrolls — otherwise the SVG scales to
+     fit and the bars turn into slivers once there are more than a few weeks. */
+  const n = pts.length, bw = 56, gap = 26, pad = 14;
+  const W = pad*2 + n*bw + Math.max(0,(n-1))*gap, H = 160;
+  let svg = '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" style="overflow:visible;display:block">';
   pts.forEach((p,i)=>{
     const x = pad + i*(bw+gap);
     if(!p.v){
@@ -797,15 +877,20 @@ function drawAnChart(){
     svg += '<text x="'+(x+bw/2)+'" y="'+(H-10)+'" fill="#94a5a5" font-size="11" text-anchor="middle">'+p.label+'</text>';
   });
   svg += '</svg>';
-  document.getElementById("anChart").innerHTML = svg;
+  const box = document.getElementById("anChart");
+  box.innerHTML = svg;
+  box.scrollLeft = box.scrollWidth;   // newest week in view
 
+  // the summary always compares against the very first week, charted or not
+  const allVals = all.filter(p=>p.v);
   const note = document.getElementById("anNote");
-  if(withVals.length >= 2){
-    const first = withVals[0].v, last = withVals[withVals.length-1].v;
+  if(allVals.length >= 2){
+    const first = allVals[0].v, last = allVals[allVals.length-1].v;
     const pct = Math.round((last-first)/first*100);
-    note.textContent = pct>0 ? "You're doing "+pct+"% more work per set than in week 1."
+    note.textContent = (pct>0 ? "You're doing "+pct+"% more work per set than in week 1."
                      : pct<0 ? "You're doing "+Math.abs(pct)+"% less work per set than in week 1."
-                     : "About the same work per set as week 1.";
+                     : "About the same work per set as week 1.")
+                     + (trimmed ? " Showing the last "+pts.length+" weeks — scroll for more." : "");
   }else{
     note.textContent = "Log this exercise in more than one week to see a trend.";
   }

@@ -85,6 +85,7 @@
   }
   .pill.mob{color:#7fb3c4;border-color:#3a5563}
   .pill.str{color:var(--accent);border-color:#5c3a30}
+  .pill.both{color:#a99bc4;border-color:#4a4260}
   .pill.on{color:var(--green);border-color:#3a5a46}
   .pill.late{color:var(--red);border-color:#5c3236}
   .clientrow{
@@ -603,21 +604,29 @@ function blank(sec){
   return {sec:sec||"strength",ex:"",sets:"",target:"",reps:"",unit:"",side:"",
           freq:document.getElementById("wkFreq").value||"",note:""};
 }
-/** Exercises offered in a section: that type, plus any with no Type set. */
+/** Exercises offered in a section: that type, plus Both, plus any with no Type. */
 function libFor(sec){
   const want = sec==="mobility" ? "Mobility" : "Strength";
-  return library.filter(l => l.type===want || !l.type);
+  return library.filter(l => l.type===want || l.type==="Both" || !l.type);
 }
 function rowHtml(r,i){
   const lib = library.find(l=>l.name===r.ex);
   const type = lib ? lib.type : "";
   const isMob = r.sec==="mobility";
   const targets = isMob ? ["Low","Mod"] : ["0 RIR","1 RIR","2 RIR","3 RIR"];
-  // only label when the Matrix actually says so — never guess
-  const typePill = r.ex
-    ? (type ? '<span class="pill '+(type==="Mobility"?"mob":"str")+'">'+type+'</span>'
-            : '<span class="pill warn" title="Add a Type in the Exercise Matrix">Type not set</span>')
-    : '';
+  /* Label from the Matrix. "Both" shows which way you're using it here, since
+     the intensity you pick is what decides how the client sees it. */
+  let typePill = '';
+  if(r.ex){
+    if(type === "Both"){
+      typePill = '<span class="pill both" title="Can be either — the intensity you pick decides">'+
+                 'Both · as '+(isMob?"mobility":"strength")+'</span>';
+    }else if(type){
+      typePill = '<span class="pill '+(type==="Mobility"?"mob":"str")+'">'+type+'</span>';
+    }else{
+      typePill = '<span class="pill warn" title="Add a Type in the Exercise Matrix">Type not set</span>';
+    }
+  }
   const opt=(v,cur)=>'<option'+(v===cur?' selected':'')+'>'+v+'</option>';
   return '<div class="exrow" draggable="false" data-i="'+i+'" data-sec="'+r.sec+'">'+
     '<div class="grip" title="Drag to reorder">⠿</div>'+
