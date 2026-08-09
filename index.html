@@ -50,9 +50,7 @@
   .exline:first-child{border-top:none}
   .exline .nm{font-size:.92rem}
   .exline .val{color:var(--text-dim);font-size:.8rem;margin-top:3px}
-  .spark{display:flex;align-items:flex-end;gap:3px;height:24px;justify-content:flex-end}
-  .spark i{width:7px;background:var(--surface-2);border-radius:2px;display:block}
-  .spark i.on{background:var(--accent)}
+  .vs{font-size:.72rem;color:var(--text-dim)}
   .an-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:14px}
   .an-card h3{font-size:.95rem;font-weight:600}
   .an-sub{color:var(--text-dim);font-size:.82rem;margin-top:2px}
@@ -116,6 +114,7 @@
   .sbtn.on{border-color:var(--accent);color:var(--text)}
   .sbtn.logged{background:#2c4a39;border-color:#3a5a46;color:var(--green)}
   .sbtn.logged.on{border-color:var(--accent)}
+  .sbtn.locked{opacity:.35;cursor:not-allowed}
   .sets{padding:12px 16px 16px}
   .sets-grid{display:grid;gap:8px;align-items:center}
   .sets-grid.cols3{grid-template-columns:44px 1fr 1fr 1fr}
@@ -364,6 +363,17 @@ function sessionsDone(ex){
   for(let s=1;s<=ex.freqNum;s++) if(sessionComplete(ex,s)) n++;
   return n;
 }
+function hasLoad(ex){
+  if(!ex.sessions) return false;
+  for(const s in ex.sessions){
+    const rec = ex.sessions[s];
+    for(const k in rec.sets){
+      if((parseFloat(rec.sets[k][0])||0) > 0) return true;
+    }
+  }
+  return false;
+}
+
 /** average work per set across all logged sessions */
 function avgPerSet(ex){
   let vol=0, reps=0, n=0, hasLoad=false;
@@ -458,9 +468,12 @@ function card(ex,wi){
   c.appendChild(head);
   if(cues) c.appendChild(cues);
 
-  // ---- session picker ----
-  let activeSession = 1;
-  for(let s=1;s<=ex.freqNum;s++){ if(!sessionComplete(ex,s)){ activeSession=s; break; } activeSession=s; }
+  // ---- session picker: sequential, next available only ----
+  const nextOpen = () => {
+    for(let s=1;s<=ex.freqNum;s++) if(!sessionComplete(ex,s)) return s;
+    return ex.freqNum;
+  };
+  let activeSession = nextOpen();
   const sessbar=document.createElement("div"); sessbar.className="sessbar";
   if(ex.freqNum>1){
     const lab=document.createElement("div"); lab.className="lab"; lab.textContent="Session";
@@ -469,16 +482,26 @@ function card(ex,wi){
       const b=document.createElement("button"); b.className="sbtn"; b.textContent=s;
       b.dataset.s=s;
       sessbar.appendChild(b);
-      b.onclick=()=>{ activeSession=s; paintSessions(); fillInputs(); };
+      b.onclick=()=>{
+        if(b.disabled) return;
+        activeSession=s; paintSessions(); fillInputs();
+      };
     }
     c.appendChild(sessbar);
   }
   function paintSessions(){
     if(ex.freqNum<=1) return;
+    const open = nextOpen();
     sessbar.querySelectorAll(".sbtn").forEach(b=>{
       const s=+b.dataset.s;
+      const doneS = sessionComplete(ex,s);
+      // you can revisit what you've done, and log the next one — nothing further
+      const locked = !doneS && s > open;
+      b.disabled = locked;
+      b.classList.toggle("locked", locked);
       b.classList.toggle("on", s===activeSession);
-      b.classList.toggle("logged", sessionComplete(ex,s));
+      b.classList.toggle("logged", doneS);
+      b.title = locked ? "Finish session "+open+" first" : "";
     });
   }
 
@@ -588,11 +611,14 @@ function card(ex,wi){
 }
 
 /* ---------- progress tab ---------- */
+let anWeek = null;   // which week the Progress tab is showing
+
 function renderAnalytics(){
   const el = document.getElementById("analytics");
   if(!program || !program.weeks.length){ el.innerHTML='<div class="empty">Nothing to show yet.</div>'; return; }
 
-  const wi = program.weeks.length - 1;
+  if(anWeek === null || anWeek >= program.weeks.length) anWeek = program.weeks.length - 1;
+  const wi = anWeek;
   const wk = program.weeks[wi];
 
   // sessions this week
@@ -614,9 +640,14 @@ function renderAnalytics(){
   });
   const chartable = Object.keys(seenIn).filter(n=>seenIn[n]>=2);
 
+  const isCurrent = wi === program.weeks.length - 1;
+
   let html =
+    '<div class="controls"><select class="week" id="anWeekSel" onchange="pickAnWeek(this.value)">'+
+      program.weeks.map((w,i)=>'<option value="'+i+'"'+(i===wi?' selected':'')+'>Week '+(i+1)+' · '+fmtShort(w.start)+'</option>').join("")+
+    '</select></div>'+
     '<div class="an-card"><div class="stat">'+
-      '<div><div class="big">'+done+'<small>of '+target+' sessions<br>this week</small></div></div>'+
+      '<div><div class="big">'+done+'<small>of '+target+' sessions<br>'+(isCurrent?"this week":"that week")+'</small></div></div>'+
       '<div><div class="big">'+streak+'<small>week'+(streak===1?"":"s")+'<br>in a row</small></div></div>'+
     '</div></div>';
 
@@ -630,14 +661,14 @@ function renderAnalytics(){
       '<div class="an-note" id="anNote"></div></div>';
   }
 
-  html += '<div class="an-card"><h3>This week</h3><div style="margin-top:6px">';
+  html += '<div class="an-card"><h3>Exercises</h3><div style="margin-top:6px">';
   wk.exercises.forEach(ex=>{
     const n = ex.freqNum || 1;
     const d = sessionsDone(ex);
     let t = '<span class="trend flat">—</span>';
     if(ex.type !== "mobility"){
       const bi = baseline[ex.name];
-      if(bi === wi) t = '<span class="trend flat">Week 1</span>';
+      if(bi === wi) t = '<span class="trend flat">First time</span>';
       else{
         const bx = program.weeks[bi].exercises.find(e=>e.name===ex.name);
         const bv = bx?avgPerSet(bx):null, cv = avgPerSet(ex);
@@ -645,20 +676,13 @@ function renderAnalytics(){
           const pct = Math.round((cv-bv)/bv*100);
           const cls = pct>0?"up":(pct<0?"down":"flat");
           const ar = pct>0?"▲":(pct<0?"▼":"–");
-          t = '<span class="trend '+cls+'">'+ar+' '+(pct>0?"+":"")+pct+'%</span>';
+          t = '<span class="trend '+cls+'">'+ar+' '+(pct>0?"+":"")+pct+'% <span class="vs">vs week '+(bi+1)+'</span></span>';
         }
       }
     }
-    let spark = "";
-    for(let s=1;s<=n;s++){
-      const on = sessionComplete(ex,s);
-      spark += '<i class="'+(on?"on":"")+'" style="height:'+(on?20:7)+'px"></i>';
-    }
-    const tLabel = (t.indexOf("%")>-1) ? '<div class="vs">vs week 1</div>' : '';
     html += '<div class="exline"><div><div class="nm">'+esc(ex.name)+'</div>'+
-      '<div class="val">'+d+' of '+n+' session'+(n===1?"":"s")+'</div></div>'+
-      '<div style="text-align:right"><div class="spark">'+spark+'</div>'+
-      '<div style="margin-top:6px">'+t+'</div>'+tLabel+'</div></div>';
+      '<div class="val">'+d+' of '+n+' session'+(n===1?"":"s")+' done</div></div>'+
+      '<div style="text-align:right">'+t+'</div></div>';
   });
   html += '</div></div>';
 
@@ -671,16 +695,21 @@ function drawAnChart(){
   if(!sel) return;
   const name = sel.value;
   const pts = [];
-  let loaded = false;
+  let loaded = false, timed = false;
   program.weeks.forEach((w,i)=>{
     const ex = w.exercises.find(e=>e.name===name);
     if(!ex) return;
-    if(ex.type !== "mobility") loaded = true;
+    if(hasLoad(ex)) loaded = true;
+    if((ex.unit||"").toLowerCase().indexOf("sec")===0) timed = true;
     const v = avgPerSet(ex);
     pts.push({ label:"Wk "+(i+1), v: v });
   });
-  const unit = loaded ? "kg lifted per set (load × reps)" : "reps per set";
-  document.getElementById("anMetric").textContent = "Average " + unit;
+  // what the numbers actually mean, so a bare "6" never appears on its own
+  let suffix, blurb;
+  if(loaded){ suffix = " kg·reps"; blurb = "Average work per set — load multiplied by reps"; }
+  else if(timed){ suffix = "s"; blurb = "Average seconds per set"; }
+  else { suffix = " reps"; blurb = "Average reps per set"; }
+  document.getElementById("anMetric").textContent = blurb;
   const withVals = pts.filter(p=>p.v);
   const max = withVals.length ? Math.max(...withVals.map(p=>p.v)) : 1;
   const n = pts.length, bw = 64, gap = 34, pad = 16;
@@ -694,8 +723,8 @@ function drawAnChart(){
       const h = Math.max(6, Math.round(p.v/max*(H-58)));
       const y = H-30-h;
       svg += '<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="5" fill="'+(i===0?"#3b4d4d":"#c25b41")+'"/>';
-      svg += '<text x="'+(x+bw/2)+'" y="'+(y-8)+'" fill="#d5dddd" font-size="12" text-anchor="middle">'+
-             (Math.round(p.v*10)/10)+'</text>';
+      svg += '<text x="'+(x+bw/2)+'" y="'+(y-8)+'" fill="#d5dddd" font-size="11.5" text-anchor="middle">'+
+             (Math.round(p.v*10)/10)+suffix+'</text>';
     }
     svg += '<text x="'+(x+bw/2)+'" y="'+(H-10)+'" fill="#94a5a5" font-size="11" text-anchor="middle">'+p.label+'</text>';
   });
@@ -714,11 +743,30 @@ function drawAnChart(){
   }
 }
 
+function pickAnWeek(v){ anWeek = +v; renderAnalytics(); }
+
 function openModal(){document.getElementById("modal").classList.add("open")}
 function closeModal(){document.getElementById("modal").classList.remove("open")}
 
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 window.addEventListener("hashchange",()=>location.reload());
+
+/* Pick up a newly published week without the client having to reload:
+   refresh when they come back to the app, and quietly every few minutes. */
+let lastSync = Date.now();
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState === "visible" && Date.now() - lastSync > 30000){
+    lastSync = Date.now();
+    refreshProgram();
+  }
+});
+window.addEventListener("focus", ()=>{
+  if(Date.now() - lastSync > 30000){ lastSync = Date.now(); refreshProgram(); }
+});
+setInterval(()=>{
+  if(document.visibilityState === "visible"){ lastSync = Date.now(); refreshProgram(); }
+}, 300000);
+
 load();
 </script>
 </body>

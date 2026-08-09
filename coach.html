@@ -90,10 +90,18 @@
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
   .exrow{
     display:grid;
-    grid-template-columns:minmax(160px,2fr) 80px 116px 96px 112px 92px 108px 36px;
+    grid-template-columns:24px minmax(150px,2fr) 80px 116px 96px 112px 92px 108px 36px;
     gap:10px;align-items:end;padding:16px 0;border-top:1px solid var(--border);
+    background:var(--surface);
   }
   .exrow:first-of-type{border-top:none;padding-top:4px}
+  .exrow.dragging{opacity:.4}
+  .exrow.over{border-top:2px solid var(--accent)}
+  .grip{
+    color:var(--text-dim);cursor:grab;user-select:none;font-size:1.05rem;
+    line-height:1;padding-bottom:10px;text-align:center;
+  }
+  .grip:active{cursor:grabbing}
   .del{background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:9px 0;cursor:pointer;height:38px}
   .del:hover{color:var(--red);border-color:var(--red)}
   .bar{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;width:120px;flex-shrink:0}
@@ -102,6 +110,23 @@
   .trend{font-size:.85rem;white-space:nowrap}
   .trend.up{color:var(--green)}.trend.down{color:var(--red)}.trend.flat{color:var(--text-dim)}
   .noteCell{max-width:240px}
+  .exname{
+    background:none;border:none;color:var(--text);font-family:inherit;font-size:.88rem;
+    text-align:left;cursor:pointer;padding:0;display:flex;gap:7px;align-items:flex-start;line-height:1.45;
+  }
+  .exname:hover{color:var(--accent)}
+  .caret{color:var(--text-dim);font-size:.72rem;padding-top:3px}
+  .detailrow td{border-top:none;padding-top:0}
+  .detail{
+    display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
+    padding:10px 14px;margin:0 0 10px;font-size:.82rem;
+  }
+  .dlab{font-size:.66rem;text-transform:uppercase;letter-spacing:.07em;color:var(--accent)}
+  .dpair{color:var(--text)}
+  .dpair i{color:var(--text-dim);font-style:normal;margin-right:6px}
+  /* keep the card from resizing as weeks change */
+  #progCard{min-height:300px}
   .noteTxt{
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
     overflow:hidden;color:var(--text-dim);font-size:.82rem;line-height:1.45;
@@ -198,7 +223,7 @@
       <option value="done">Complete</option>
       <option value="late">Overdue</option>
     </select>
-    <button class="btn ghost sm" onclick="loadClients()">Refresh</button>
+    <button class="btn ghost sm" id="refreshClients" onclick="loadClients()">Refresh</button>
   </div>
   <div id="clientList"></div>
 </div>
@@ -211,13 +236,15 @@
       <button class="btn ghost sm" onclick="copyLast()">Copy last week</button>
     </div>
   </div>
-  <div class="urlbox"><code id="clientUrl">—</code>
-    <button class="btn ghost sm" onclick="copyClientUrl()">Copy</button></div>
 
   <div class="card">
     <div class="grid3">
-      <div><label class="f">Start date</label><input type="date" id="wkStart"></div>
-      <div><label class="f">Due date</label><input type="date" id="wkEnd"></div>
+      <div><label class="f">Start date</label>
+        <input type="text" id="wkStart" value="–" class="dateish"
+          onfocus="asDate(this)" onblur="asText(this)"></div>
+      <div><label class="f">Due date</label>
+        <input type="text" id="wkEnd" value="–" class="dateish"
+          onfocus="asDate(this)" onblur="asText(this)"></div>
       <div>
         <label class="f">Times per week</label>
         <select id="wkFreq" onchange="syncFreq()">
@@ -259,7 +286,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="progCard">
     <table class="fixed">
       <colgroup>
         <col style="width:26%"><col style="width:10%"><col style="width:16%">
@@ -293,7 +320,7 @@
       <span><i style="background:var(--surface-2);border:1px solid var(--border)"></i>Not prescribed or not logged</span>
     </div>
     <table style="margin-top:20px">
-      <thead><tr><th>Week</th><th>Dates</th><th>Sessions</th><th>Avg load</th><th>Avg reps</th><th>Intensity</th><th>Change</th></tr></thead>
+      <thead><tr><th>Week</th><th>Dates</th><th>Sessions</th><th>Avg load</th><th>Avg reps</th><th>Avg per set</th><th>Intensity</th><th>Change</th></tr></thead>
       <tbody id="wowBody"></tbody>
     </table>
   </div>
@@ -382,7 +409,6 @@ function showClientTabs(c){
   document.getElementById("tab2").classList.remove("hide");
   document.getElementById("buildFor").textContent = c.name + " — new week";
   document.getElementById("progFor").textContent = c.name;
-  document.getElementById("clientUrl").textContent = SITE + "/#/" + c.slug;
 }
 
 /* ---------------- clients ---------------- */
@@ -390,11 +416,17 @@ function fmtDue(d){
   if(!d) return "—";
   return new Date(d+"T00:00").toLocaleDateString("en-AU",{day:"numeric",month:"short"});
 }
-async function loadClients(){
+async function loadClients(silent){
+  const el=document.getElementById("clientList");
+  const btn=document.getElementById("refreshClients");
+  if(btn){ btn.disabled=true; btn.textContent="Refreshing…"; }
+  if(!silent) el.innerHTML='<div class="empty">Loading…</div>';
   const res = await apiGet({action:"clients"});
+  if(btn){ btn.disabled=false; btn.textContent="Refresh"; }
+  if(res.error){ el.innerHTML='<div class="empty">Couldn\'t load clients.</div>'; return; }
   clients = res.clients || [];
   renderClients();
-  toast("Refreshed");
+  if(!silent) toast("Refreshed");
 }
 function renderClients(){
   const sort=document.getElementById("sortBy").value;
@@ -405,7 +437,10 @@ function renderClients(){
   const el=document.getElementById("clientList");
   if(!list.length){ el.innerHTML='<div class="empty">No clients match.</div>'; return; }
   el.innerHTML = list.map(c=>{
-    const pct = c.total ? Math.round(c.done/c.total*100) : 0;
+    // clamp: a bad value in the sheet shouldn't produce a nonsense percentage
+    const done = Math.max(0, Number(c.done) || 0);
+    const total = Math.max(0, Number(c.total) || 0);
+    const pct = total ? Math.min(100, Math.round(done/total*100)) : 0;
     const cls = c.status==="late" ? "pill late" : (c.status==="done" ? "pill on" : "pill");
     const label = c.status==="late" ? "Overdue" : (c.status==="done" ? "Complete" : pct+"% logged");
     return '<div class="clientrow" onclick="openClient(\''+c.slug+'\')">'+
@@ -421,10 +456,18 @@ async function openClient(slug){
   const c = clients.find(x=>x.slug===slug);
   if(!c) return;
   showClientTabs(c);
-  rows=[blank("mobility")]; render();
+  rows=[]; render();                 // both sections start empty
   showProblems(null);
-  go(2, document.getElementById("tab2"));
-  await refreshProgress();
+  const hasWeeks = c.weeks && c.weeks.length;
+  // nothing to look at until a week exists — start them where the work is
+  document.getElementById("tab2").classList.toggle("hide", !hasWeeks);
+  if(hasWeeks){
+    go(2, document.getElementById("tab2"));
+    await refreshProgress();
+  }else{
+    go(1, document.getElementById("tab1"));
+    progData = null;
+  }
 }
 
 /** Pull progress straight from the sheet, bypassing the server cache. */
@@ -462,6 +505,26 @@ function copyClientUrl(){
   );
 }
 
+/* ---- date fields: show "–" when empty, real picker when focused ---- */
+function asDate(el){
+  el.dataset.iso = el.dataset.iso || "";
+  el.type = "date";
+  el.value = el.dataset.iso || "";
+  if(el.showPicker) { try{ el.showPicker(); }catch(e){} }
+}
+function asText(el){
+  el.dataset.iso = el.value || "";
+  if(!el.value){ el.type = "text"; el.value = "–"; }
+}
+function dateVal(id){
+  const el = document.getElementById(id);
+  return (el.type === "date") ? el.value : (el.dataset.iso || "");
+}
+function clearDate(id){
+  const el = document.getElementById(id);
+  el.dataset.iso = ""; el.type = "text"; el.value = "–";
+}
+
 /* ---------------- week builder ---------------- */
 function blank(sec){
   return {sec:sec||"strength",ex:"",sets:"",target:"",reps:"",unit:"",side:"",
@@ -483,7 +546,8 @@ function rowHtml(r,i){
             : '<span class="pill warn" title="Add a Type in the Exercise Matrix">Type not set</span>')
     : '';
   const opt=(v,cur)=>'<option'+(v===cur?' selected':'')+'>'+v+'</option>';
-  return '<div class="exrow">'+
+  return '<div class="exrow" draggable="false" data-i="'+i+'" data-sec="'+r.sec+'">'+
+    '<div class="grip" title="Drag to reorder">⠿</div>'+
     '<div><label class="f">Exercise '+typePill+'</label>'+
       '<select onchange="setF('+i+',\'ex\',this.value);render()"><option value="">Select…</option>'+
       libFor(r.sec).map(l=>opt(l.name,r.ex)).join("")+'</select></div>'+
@@ -505,9 +569,10 @@ function render(){
   const mob=[], str=[];
   rows.forEach((r,i)=>{ (r.sec==="mobility" ? mob : str).push(rowHtml(r,i)); });
   document.getElementById("exListMobility").innerHTML =
-    mob.length ? mob.join("") : '<div class="empty" style="padding:12px 0">No mobility exercises.</div>';
+    mob.length ? mob.join("") : '<div class="empty" style="padding:12px 0">None added.</div>';
   document.getElementById("exListStrength").innerHTML =
-    str.length ? str.join("") : '<div class="empty" style="padding:12px 0">No strength exercises.</div>';
+    str.length ? str.join("") : '<div class="empty" style="padding:12px 0">None added.</div>';
+  wireDrag();
 }
 function setF(i,k,v){ rows[i][k]=v; }
 function addRow(sec){ rows.push(blank(sec)); render(); }
@@ -515,6 +580,47 @@ function rmRow(i){ rows.splice(i,1); render(); }
 /** Mobility first, then strength — the same order the client sees. */
 function orderedRows(){
   return rows.filter(r=>r.sec==="mobility").concat(rows.filter(r=>r.sec!=="mobility"));
+}
+
+/* ---- drag to reorder (within a section) ---- */
+let dragFrom = null;
+function wireDrag(){
+  document.querySelectorAll(".exrow").forEach(el=>{
+    const grip = el.querySelector(".grip");
+    if(!grip) return;
+    // only the handle starts a drag, so the fields stay clickable
+    grip.addEventListener("mousedown", ()=>{ el.draggable = true; });
+    grip.addEventListener("touchstart", ()=>{ el.draggable = true; }, {passive:true});
+    el.addEventListener("dragstart", e=>{
+      dragFrom = +el.dataset.i;
+      el.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+      try{ e.dataTransfer.setData("text/plain", String(dragFrom)); }catch(err){}
+    });
+    el.addEventListener("dragend", ()=>{
+      el.draggable = false;
+      el.classList.remove("dragging");
+      document.querySelectorAll(".exrow").forEach(x=>x.classList.remove("over"));
+    });
+    el.addEventListener("dragover", e=>{
+      if(dragFrom === null) return;
+      if(rows[dragFrom].sec !== el.dataset.sec) return;   // don't cross sections
+      e.preventDefault();
+      el.classList.add("over");
+    });
+    el.addEventListener("dragleave", ()=>el.classList.remove("over"));
+    el.addEventListener("drop", e=>{
+      e.preventDefault();
+      el.classList.remove("over");
+      const to = +el.dataset.i;
+      if(dragFrom === null || dragFrom === to) return;
+      if(rows[dragFrom].sec !== rows[to].sec) return;
+      const moved = rows.splice(dragFrom, 1)[0];
+      rows.splice(to, 0, moved);
+      dragFrom = null;
+      render();
+    });
+  });
 }
 function syncFreq(){
   const f=document.getElementById("wkFreq").value;
@@ -547,8 +653,8 @@ function showProblems(list){
 async function saveWeek(){
   showProblems(null);
   if(!current){ toast("Pick a client first"); return; }
-  const start=document.getElementById("wkStart").value;
-  const end=document.getElementById("wkEnd").value;
+  const start=dateVal("wkStart");
+  const end=dateVal("wkEnd");
   const local=[];
   if(!start) local.push("No start date set");
   if(!end) local.push("No due date set");
@@ -570,25 +676,49 @@ async function saveWeek(){
   const res = await apiPost({action:"saveWeek", client:current.slug, start:start, end:end, rows:valid});
   btn.disabled=false; btn.textContent="Save week";
 
-  if(res.problems){ showProblems(res.problems); return; }
+  // a partial save still wrote rows, so always resync before showing problems
+  if(res.problems){
+    showProblems(res.problems);
+    await loadClients();
+    document.getElementById("tab2").classList.remove("hide");
+    await refreshProgress();
+    return;
+  }
   if(res.error){
     showProblems([res.detail || res.error]);
     console.error("saveWeek failed:", res);
     return;
   }
   toast("Saved — "+res.added+" rows added from row "+res.firstRow);
-  rows=[blank("mobility")]; render();
-  document.getElementById("wkStart").value=""; document.getElementById("wkEnd").value="";
+  rows=[]; render();
+  clearDate("wkStart"); clearDate("wkEnd");
   await loadClients();
+  document.getElementById("tab2").classList.remove("hide");
   await refreshProgress();   // keep the Progress tab in step
 }
 
 /* ---------------- progress ---------------- */
-let noteOpen={};
+let noteOpen={}, detailOpen={};
+/* one shared definition of "work per set" — the server computes it, so the
+   coach view and the client view can never disagree */
 function avgPerSetOf(ex){
-  if(ex.avgLoad!==null && ex.avgLoad!==undefined && ex.avgReps) return ex.avgLoad*ex.avgReps;
-  if(ex.avgReps) return ex.avgReps;
-  return null;
+  return (ex.avgPerSet === null || ex.avgPerSet === undefined) ? null : ex.avgPerSet;
+}
+function prescription(ex){
+  const bits=[];
+  bits.push(["Sets", ex.sets || "–"]);
+  let reps = ex.reps || "–";
+  const u=(ex.unit||"").toLowerCase();
+  if(ex.reps){
+    if(u.indexOf("sec")===0) reps = ex.reps+"s";
+    else if(u.indexOf("min")===0) reps = ex.reps+" min";
+    else if(u.indexOf("rep")===0) reps = ex.reps+" reps";
+  }
+  if(ex.perSide) reps += " each side";
+  bits.push(["Reps", reps]);
+  bits.push(["Intensity", ex.target || "–"]);
+  bits.push(["Per week", ex.freq || "–"]);
+  return bits;
 }
 function baseWeekIndex(name){
   for(let i=0;i<progData.weeks.length;i++){
@@ -631,16 +761,27 @@ function renderProgress(){
       ? '<div class="noteTxt'+(noteOpen[idx]?' open':'')+'">'+notes+'</div>'+
         (long?'<button class="more" onclick="toggleNote('+idx+')">'+(noteOpen[idx]?"Show less":"Show more")+'</button>':'')
       : '<span class="trend flat">—</span>';
+
+    const open = !!detailOpen[idx];
+    const detail = open
+      ? '<tr class="detailrow"><td colspan="6"><div class="detail">'+
+          '<span class="dlab">Prescribed</span>'+
+          prescription(p).map(b=>'<span class="dpair"><i>'+b[0]+'</i>'+b[1]+'</span>').join("")+
+        '</div></td></tr>'
+      : '';
+
     return '<tr>'+
-      '<td>'+p.name+'</td>'+
+      '<td><button class="exname" onclick="toggleDetail('+idx+')">'+
+        '<span class="caret">'+(open?"▾":"▸")+'</span>'+p.name+'</button></td>'+
       '<td><span class="pill '+(isMob?"mob":"str")+'">'+(isMob?"Mobility":"Strength")+'</span></td>'+
       '<td><div class="bar"><span style="width:'+pct+'%"></span></div>'+
         '<div class="sesscount">'+(p.done||0)+' of '+total+' sessions</div></td>'+
       '<td>'+avg+'</td><td>'+trend+'</td>'+
-      '<td class="noteCell">'+noteCell+'</td></tr>';
+      '<td class="noteCell">'+noteCell+'</td></tr>' + detail;
   }).join("");
 }
 function toggleNote(i){ noteOpen[i]=!noteOpen[i]; renderProgress(); }
+function toggleDetail(i){ detailOpen[i]=!detailOpen[i]; renderProgress(); }
 
 /* ---------------- week on week ---------------- */
 function renderWowOptions(){
@@ -671,7 +812,7 @@ function renderWow(){
       wk:"Week "+(i+1), dates:fmtDue(w.start)+" – "+fmtDue(w.end),
       done:p.done||0, of:total,
       load:p.avgLoad, reps:p.avgReps, int:p.avgInt||"—",
-      vol:Math.round(((p.avgLoad||0)*(p.avgReps||0))*10)/10,
+      vol:Math.round((avgPerSetOf(p)||0)*10)/10,
       adh:Math.round((p.done||0)/total*100)
     };
   });
@@ -699,7 +840,7 @@ function renderWow(){
 
   let prev=null;
   document.getElementById("wowBody").innerHTML=series.map((s,i)=>{
-    if(!s) return '<tr><td>Week '+(i+1)+'</td><td>—</td><td colspan="5" class="trend flat">Not prescribed</td></tr>';
+    if(!s) return '<tr><td>Week '+(i+1)+'</td><td>—</td><td colspan="6" class="trend flat">Not prescribed</td></tr>';
     let ch='<span class="trend flat">—</span>';
     if(prev && prev.vol>0 && s.vol>0){
       const pct=Math.round((s.vol-prev.vol)/prev.vol*100);
@@ -710,7 +851,9 @@ function renderWow(){
     prev=s;
     return '<tr><td>'+s.wk+'</td><td>'+s.dates+'</td><td>'+s.done+' of '+s.of+'</td>'+
       '<td>'+(s.load!==null&&s.load!==undefined?Math.round(s.load*10)/10+"kg":"—")+'</td>'+
-      '<td>'+(s.reps?Math.round(s.reps):"—")+'</td><td>'+s.int+'</td><td>'+ch+'</td></tr>';
+      '<td>'+(s.reps?Math.round(s.reps*10)/10:"—")+'</td>'+
+      '<td>'+(s.vol?s.vol:"—")+'</td>'+
+      '<td>'+s.int+'</td><td>'+ch+'</td></tr>';
   }).join("");
 }
 
@@ -725,22 +868,30 @@ function updLink(){
 document.getElementById("fn").addEventListener("input",updLink);
 document.getElementById("ln").addEventListener("input",updLink);
 async function createClient(){
-  const n=(document.getElementById("fn").value+" "+document.getElementById("ln").value).trim();
-  if(n.length<3){ toast("Enter a first and last name"); return; }
+  const fn=document.getElementById("fn").value.trim();
+  const ln=document.getElementById("ln").value.trim();
+  if(!fn || !ln){ toast("Enter both a first and last name"); return; }
+  const n=(fn+" "+ln).trim();
   const btn=document.getElementById("createBtn");
   btn.disabled=true; btn.textContent="Creating…";
   const res=await apiPost({action:"createClient", name:n});
   btn.disabled=false; btn.textContent="Create tab";
   if(res.error){
     toast(res.error==="exists" ? "That client already exists"
+        : res.error==="needs_two_names" ? "Enter both a first and last name"
         : res.error==="no_template" ? "No Template tab found" : "Couldn't create");
-    return;
+    return;   // modal stays open so they can correct it
   }
   closeNew();
   document.getElementById("fn").value=""; document.getElementById("ln").value="";
-  await loadClients();
+  await loadClients(true);
   const c=clients.find(x=>x.slug===res.slug);
-  if(c){ showClientTabs(c); rows=[blank("mobility")]; render(); go(1,document.getElementById("tab1")); }
+  if(c){
+    showClientTabs(c);
+    document.getElementById("tab2").classList.add("hide");
+    rows=[]; render();
+    go(1,document.getElementById("tab1"));
+  }
   toast("Created — "+res.name);
 }
 
