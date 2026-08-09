@@ -14,15 +14,14 @@
     --red:#ff6b6b; --green:#5fbd7d; --radius:12px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  /* always leave room for the scrollbar, so switching tabs can't shift the page */
-  html{scrollbar-gutter:stable;overflow-y:scroll}
+  /* Reserve the scrollbar so switching tabs can't shift the layout sideways.
+     No forced overflow or min-height — those left dead space below the content. */
+  html{scrollbar-gutter:stable}
   body{
     background:var(--bg);color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    -webkit-font-smoothing:antialiased;max-width:1140px;margin:0 auto;padding:0 24px 90px;
-    min-height:100vh;
+    -webkit-font-smoothing:antialiased;max-width:1140px;margin:0 auto;padding:0 24px 40px;
   }
-  .view{min-height:60vh}
   .logo-wrap{padding:26px 0 4px;text-align:center}
   .logo{height:56px;display:inline-block}
   .logo-text{
@@ -185,7 +184,7 @@
     body{max-width:none;color:#000;background:#fff}
     nav,header button,.btn,#login,.more,.arch{display:none!important}
     .card{border-color:#ccc;background:#fff;break-inside:avoid}
-    .view{display:none!important;min-height:0}.view.on{display:block!important}
+    .view{display:none!important}.view.on{display:block!important}
     td,th{color:#000}
     .noteTxt{-webkit-line-clamp:unset;color:#333}
     /* keep the branding on the report */
