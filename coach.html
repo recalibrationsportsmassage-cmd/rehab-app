@@ -14,14 +14,24 @@
     --red:#ff6b6b; --green:#5fbd7d; --radius:12px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
+  /* always leave room for the scrollbar, so switching tabs can't shift the page */
+  html{scrollbar-gutter:stable;overflow-y:scroll}
   body{
     background:var(--bg);color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;max-width:1140px;margin:0 auto;padding:0 24px 90px;
+    min-height:100vh;
   }
-  header{padding:28px 0 6px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .view{min-height:60vh}
+  .logo-wrap{padding:26px 0 4px;text-align:center}
+  .logo{height:56px;display:inline-block}
+  .logo-text{
+    font-size:.9rem;text-transform:uppercase;letter-spacing:.18em;
+    color:var(--accent);display:none;
+  }
+  header{padding:10px 0 6px;display:flex;align-items:center;justify-content:space-between;gap:16px}
   .brand{font-size:.72rem;text-transform:uppercase;letter-spacing:.18em;color:var(--accent)}
-  header h1{font-size:1.3rem;font-weight:600;margin-top:6px}
+  header h1{font-size:1.3rem;font-weight:600}
   nav{display:flex;gap:6px;border-bottom:1px solid var(--border);margin:18px 0 22px}
   nav button{
     background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);
@@ -78,11 +88,18 @@
   .pill.on{color:var(--green);border-color:#3a5a46}
   .pill.late{color:var(--red);border-color:#5c3236}
   .clientrow{
-    display:grid;grid-template-columns:1fr 240px;gap:20px;align-items:center;
+    display:grid;grid-template-columns:1fr 330px;gap:20px;align-items:center;
     padding:15px 18px;border:1px solid var(--border);border-radius:var(--radius);
     background:var(--surface);margin-top:10px;cursor:pointer;
   }
   .clientrow:hover{border-color:var(--accent)}
+  /* whichever client the other two tabs are showing */
+  .clientrow.active{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+  .openpill{
+    font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);
+    border:1px solid #5c3a30;border-radius:20px;padding:1px 7px;margin-left:7px;vertical-align:2px;
+  }
+  .arch{flex-shrink:0}
   .clientrow .nm{font-weight:600}
   .clientrow .meta{color:var(--text-dim);font-size:.82rem;margin-top:3px}
   .clientrow .right{display:flex;align-items:center;justify-content:flex-end;gap:14px}
@@ -169,12 +186,23 @@
   .legend{display:flex;gap:16px;font-size:.78rem;color:var(--text-dim);margin-top:12px;flex-wrap:wrap}
   .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
   @media print{
+    html{overflow-y:visible}
     body{max-width:none;color:#000;background:#fff}
-    nav,header button,.btn,#login,.more{display:none!important}
+    nav,header button,.btn,#login,.more,.arch{display:none!important}
     .card{border-color:#ccc;background:#fff;break-inside:avoid}
-    .view{display:none!important}.view.on{display:block!important}
+    .view{display:none!important;min-height:0}.view.on{display:block!important}
     td,th{color:#000}
     .noteTxt{-webkit-line-clamp:unset;color:#333}
+    /* keep the branding on the report */
+    .logo-wrap{padding:0 0 10px;text-align:left}
+    .logo{height:44px;filter:invert(1)}
+    .logo-text{color:#000}
+    header h1{color:#000;font-size:1.1rem}
+    .pill{color:#333!important;border-color:#bbb!important;background:#fff!important}
+    .trend.up{color:#1a7a3c!important}
+    .trend.down{color:#b3261e!important}
+    .bar{background:#eee}
+    .bar span{background:#888}
   }
   @media(max-width:900px){
     .exrow{grid-template-columns:1fr 1fr;gap:12px}
@@ -197,11 +225,14 @@
 </div>
 
 <div id="app">
+<div class="logo-wrap">
+  <img class="logo" alt="Recalibration"
+    src="https://images.squarespace-cdn.com/content/v1/66d2a42747a32424bfaefbe7/834960fe-960a-4402-bd41-5b6042b762c9/Recalibration-logo-white.png?format=750w"
+    onerror="this.style.display='none';document.querySelector('.logo-text').style.display='block'">
+  <div class="logo-text">Recalibration</div>
+</div>
 <header>
-  <div>
-    <div class="brand">Recalibration</div>
-    <h1>Coach</h1>
-  </div>
+  <h1>Coach</h1>
   <button class="btn" onclick="openNew()">New program</button>
 </header>
 
@@ -222,6 +253,7 @@
       <option value="open">In progress</option>
       <option value="done">Complete</option>
       <option value="late">Overdue</option>
+      <option value="archived">Archived</option>
     </select>
     <button class="btn ghost sm" id="refreshClients" onclick="loadClients()">Refresh</button>
   </div>
@@ -431,7 +463,12 @@ async function loadClients(silent){
 function renderClients(){
   const sort=document.getElementById("sortBy").value;
   const filt=document.getElementById("filterBy").value;
-  let list=clients.filter(c=> filt==="all" ? true : c.status===filt);
+  // archived clients stay out of the way unless you ask for them
+  let list=clients.filter(c=>{
+    if(filt==="archived") return c.status==="archived";
+    if(c.status==="archived") return false;
+    return filt==="all" ? true : c.status===filt;
+  });
   list.sort((a,b)=> sort==="name" ? a.name.localeCompare(b.name)
                                   : ((a.due||"9999")<(b.due||"9999")?-1:1));
   const el=document.getElementById("clientList");
@@ -441,14 +478,20 @@ function renderClients(){
     const done = Math.max(0, Number(c.done) || 0);
     const total = Math.max(0, Number(c.total) || 0);
     const pct = total ? Math.min(100, Math.round(done/total*100)) : 0;
-    const cls = c.status==="late" ? "pill late" : (c.status==="done" ? "pill on" : "pill");
-    const label = c.status==="late" ? "Overdue" : (c.status==="done" ? "Complete" : pct+"% logged");
-    return '<div class="clientrow" onclick="openClient(\''+c.slug+'\')">'+
-      '<div><div class="nm">'+c.name+'</div>'+
+    const cls = c.status==="archived" ? "pill" :
+                c.status==="late" ? "pill late" : (c.status==="done" ? "pill on" : "pill");
+    const label = c.status==="archived" ? "Archived" :
+                  c.status==="late" ? "Overdue" : (c.status==="done" ? "Complete" : pct+"% logged");
+    const active = (current && current.slug===c.slug) ? " active" : "";
+    return '<div class="clientrow'+active+'" onclick="openClient(\''+c.slug+'\')">'+
+      '<div><div class="nm">'+c.name+(active?' <span class="openpill">open</span>':'')+'</div>'+
       '<div class="meta">'+c.week+' · due '+fmtDue(c.due)+'</div></div>'+
       '<div class="right">'+
         '<div class="bar"><span style="width:'+pct+'%"></span></div>'+
         '<span class="'+cls+'">'+label+'</span>'+
+        '<button class="btn ghost sm arch" onclick="event.stopPropagation();toggleArchive(\''+
+          c.name.replace(/'/g,"\\'")+'\','+(!c.archived)+')">'+
+          (c.archived?"Restore":"Archive")+'</button>'+
       '</div></div>';
   }).join("");
 }
@@ -485,6 +528,13 @@ async function refreshProgress(){
     '<option value="'+i+'">Week '+(i+1)+' · '+fmtDue(w.start)+'</option>').join("");
   sel.value = Math.max(0, progData.weeks.length-1);
   renderProgress(); renderWowOptions(); renderWow();
+}
+
+async function toggleArchive(name, on){
+  const res = await apiPost({action:"archive", name:name, archived:on});
+  if(res.error){ toast("Couldn't update — "+(res.detail||res.error)); return; }
+  toast(on ? name+" archived" : name+" restored");
+  await loadClients(true);
 }
 
 function clientUrl(){
@@ -632,14 +682,21 @@ async function copyLast(){
   const p = progData || await apiGet({action:"progress", client:current.slug});
   if(!p.weeks || !p.weeks.length){ toast("No previous week to copy"); return; }
   const last = p.weeks[p.weeks.length-1];
-  rows = last.exercises.map(e=>({
+  // the sheet can hold the same exercise twice in a week — only copy it once
+  const seen = {};
+  rows = last.exercises.filter(e=>{
+    const k = (e.name||"").trim().toLowerCase();
+    if(!k || seen[k]) return false;
+    seen[k] = 1; return true;
+  }).map(e=>({
     sec: e.type==="mobility" ? "mobility" : "strength",
     ex:e.name, sets:String(e.sets||""), target:e.target||"",
     reps:e.reps||"", unit:e.unit||"", side:e.perSide?"Yes":"No",
     freq:e.freq||"", note:""
   }));
   render();
-  toast("Copied "+rows.length+" exercises");
+  const skipped = last.exercises.length - rows.length;
+  toast("Copied "+rows.length+" exercises"+(skipped?" ("+skipped+" duplicate"+(skipped>1?"s":"")+" skipped)":""));
 }
 function showProblems(list){
   const box=document.getElementById("saveProblems");

@@ -43,7 +43,13 @@
   .tabs button.on{color:var(--text);border-bottom-color:var(--accent)}
   .pane{display:none}.pane.on{display:block}
   .stat{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  .stat.single{grid-template-columns:1fr}
   .stat > div + div{border-left:1px solid var(--border);padding-left:16px}
+  .an-divider{
+    display:flex;align-items:center;gap:12px;margin:26px 0 4px;
+    font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);
+  }
+  .an-divider::after{content:"";flex:1;height:1px;background:var(--border)}
   .big{font-size:1.9rem;font-weight:600;line-height:1}
   .big small{font-size:.8rem;font-weight:400;color:var(--text-dim);display:block;margin-top:8px;line-height:1.35}
   .exline{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--border)}
@@ -642,12 +648,14 @@ function renderAnalytics(){
 
   const isCurrent = wi === program.weeks.length - 1;
 
+  // all-time totals, independent of the week filter below
+  let allDone = 0;
+  program.weeks.forEach(w=>w.exercises.forEach(ex=>{ allDone += sessionsDone(ex); }));
+
+  /* ---- overall, across the whole program ---- */
   let html =
-    '<div class="controls"><select class="week" id="anWeekSel" onchange="pickAnWeek(this.value)">'+
-      program.weeks.map((w,i)=>'<option value="'+i+'"'+(i===wi?' selected':'')+'>Week '+(i+1)+' · '+fmtShort(w.start)+'</option>').join("")+
-    '</select></div>'+
     '<div class="an-card"><div class="stat">'+
-      '<div><div class="big">'+done+'<small>of '+target+' sessions<br>'+(isCurrent?"this week":"that week")+'</small></div></div>'+
+      '<div><div class="big">'+allDone+'<small>sessions<br>logged so far</small></div></div>'+
       '<div><div class="big">'+streak+'<small>week'+(streak===1?"":"s")+'<br>in a row</small></div></div>'+
     '</div></div>';
 
@@ -660,6 +668,16 @@ function renderAnalytics(){
       '</select></div><div id="anChart" style="margin-top:16px"></div>'+
       '<div class="an-note" id="anNote"></div></div>';
   }
+
+  /* ---- everything below is filtered to one week ---- */
+  html +=
+    '<div class="an-divider"><span>By week</span></div>'+
+    '<div class="controls"><select class="week" id="anWeekSel" onchange="pickAnWeek(this.value)">'+
+      program.weeks.map((w,i)=>'<option value="'+i+'"'+(i===wi?' selected':'')+'>Week '+(i+1)+' · '+fmtShort(w.start)+'</option>').join("")+
+    '</select></div>'+
+    '<div class="an-card"><div class="stat single">'+
+      '<div><div class="big">'+done+'<small>of '+target+' sessions '+(isCurrent?"this week":"that week")+'</small></div></div>'+
+    '</div></div>';
 
   html += '<div class="an-card"><h3>Exercises</h3><div style="margin-top:6px">';
   wk.exercises.forEach(ex=>{
