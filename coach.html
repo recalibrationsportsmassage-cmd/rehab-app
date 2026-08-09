@@ -93,12 +93,6 @@
     background:var(--surface);margin-top:10px;cursor:pointer;
   }
   .clientrow:hover{border-color:var(--accent)}
-  /* whichever client the other two tabs are showing */
-  .clientrow.active{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
-  .openpill{
-    font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);
-    border:1px solid #5c3a30;border-radius:20px;padding:1px 7px;margin-left:7px;vertical-align:2px;
-  }
   .arch{flex-shrink:0}
   .clientrow .nm{font-weight:600}
   .clientrow .meta{color:var(--text-dim);font-size:.82rem;margin-top:3px}
@@ -142,8 +136,8 @@
   .dlab{font-size:.66rem;text-transform:uppercase;letter-spacing:.07em;color:var(--accent)}
   .dpair{color:var(--text)}
   .dpair i{color:var(--text-dim);font-style:normal;margin-right:6px}
-  /* keep the card from resizing as weeks change */
-  #progCard{min-height:300px}
+  /* fixed table layout already stops the columns moving — no min-height needed,
+     which kept the PDF full of white space when a week had one exercise */
   .noteTxt{
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
     overflow:hidden;color:var(--text-dim);font-size:.82rem;line-height:1.45;
@@ -273,10 +267,10 @@
     <div class="grid3">
       <div><label class="f">Start date</label>
         <input type="text" id="wkStart" value="–" class="dateish"
-          onfocus="asDate(this)" onblur="asText(this)"></div>
+          onfocus="asDate(this)" onchange="datePicked(this)" onblur="asText(this)"></div>
       <div><label class="f">Due date</label>
         <input type="text" id="wkEnd" value="–" class="dateish"
-          onfocus="asDate(this)" onblur="asText(this)"></div>
+          onfocus="asDate(this)" onchange="datePicked(this)" onblur="asText(this)"></div>
       <div>
         <label class="f">Times per week</label>
         <select id="wkFreq" onchange="syncFreq()">
@@ -433,7 +427,24 @@ function go(i,btn){
   document.querySelectorAll(".view").forEach((v,k)=>v.classList.toggle("on",k===i));
   document.querySelectorAll("nav button").forEach(b=>b.classList.remove("on"));
   if(btn) btn.classList.add("on");
+  // Going back to the client list drops the loaded client entirely, so there's
+  // no half-loaded view to come back to and nothing stale to misread.
+  if(i===0) clearClient();
   window.scrollTo(0,0);
+}
+
+function clearClient(){
+  current = null;
+  progData = null;
+  rows = [];
+  detailOpen = {}; noteOpen = {};
+  document.getElementById("tab1").classList.add("hide");
+  document.getElementById("tab2").classList.add("hide");
+  document.getElementById("progBody").innerHTML = "";
+  document.getElementById("wowBody").innerHTML = "";
+  document.getElementById("chart").innerHTML = "";
+  showProblems(null);
+  renderClients();
 }
 function showClientTabs(c){
   current = c;
@@ -482,9 +493,8 @@ function renderClients(){
                 c.status==="late" ? "pill late" : (c.status==="done" ? "pill on" : "pill");
     const label = c.status==="archived" ? "Archived" :
                   c.status==="late" ? "Overdue" : (c.status==="done" ? "Complete" : pct+"% logged");
-    const active = (current && current.slug===c.slug) ? " active" : "";
-    return '<div class="clientrow'+active+'" onclick="openClient(\''+c.slug+'\')">'+
-      '<div><div class="nm">'+c.name+(active?' <span class="openpill">open</span>':'')+'</div>'+
+    return '<div class="clientrow" onclick="openClient(\''+c.slug+'\')">'+
+      '<div><div class="nm">'+c.name+'</div>'+
       '<div class="meta">'+c.week+' · due '+fmtDue(c.due)+'</div></div>'+
       '<div class="right">'+
         '<div class="bar"><span style="width:'+pct+'%"></span></div>'+
@@ -516,9 +526,17 @@ async function openClient(slug){
 /** Pull progress straight from the sheet, bypassing the server cache. */
 async function refreshProgress(){
   if(!current) return;
+  const forSlug = current.slug;
   const body=document.getElementById("progBody");
+  // wipe first, so the previous client's numbers are never on screen
+  progData = null;
   body.innerHTML='<tr><td colspan="6" class="empty">Loading…</td></tr>';
-  progData = await apiGet({action:"progress", client:current.slug, fresh:"1"});
+  document.getElementById("wowBody").innerHTML='';
+  document.getElementById("chart").innerHTML='';
+  const res = await apiGet({action:"progress", client:forSlug, fresh:"1"});
+  // they may have clicked another client while this was in flight
+  if(!current || current.slug !== forSlug) return;
+  progData = res;
   if(progData.error){
     body.innerHTML='<tr><td colspan="6" class="empty">Couldn\'t load progress.</td></tr>';
     return;
@@ -566,6 +584,11 @@ function asText(el){
   el.dataset.iso = el.value || "";
   if(!el.value){ el.type = "text"; el.value = "–"; }
 }
+/** Picking a date should dismiss the calendar — some browsers leave it open. */
+function datePicked(el){
+  el.dataset.iso = el.value || "";
+  el.blur();
+}
 function dateVal(id){
   const el = document.getElementById(id);
   return (el.type === "date") ? el.value : (el.dataset.iso || "");
@@ -605,7 +628,7 @@ function rowHtml(r,i){
       '<option value="">–</option>'+[1,2,3].map(s=>opt(String(s),String(r.sets))).join("")+'</select></div>'+
     '<div><label class="f">Intensity</label><select onchange="setF('+i+',\'target\',this.value)">'+
       '<option value="">–</option>'+targets.map(t=>opt(t,r.target)).join("")+'</select></div>'+
-    '<div><label class="f">Reps</label><input value="'+r.reps+'" placeholder="–" onchange="setF('+i+',\'reps\',this.value)"></div>'+
+    '<div><label class="f">Reps</label><input value="'+r.reps+'" placeholder="–" onchange="setReps('+i+',this.value)"></div>'+
     '<div><label class="f">Unit</label><select onchange="setF('+i+',\'unit\',this.value)">'+
       '<option value="">–</option>'+["Reps","Seconds","Minutes","Text"].map(u=>opt(u,r.unit)).join("")+'</select></div>'+
     '<div><label class="f">Each side</label><select onchange="setF('+i+',\'side\',this.value)">'+
@@ -625,6 +648,20 @@ function render(){
   wireDrag();
 }
 function setF(i,k,v){ rows[i][k]=v; }
+
+/** Typing words in Reps implies the unit is Text — set it rather than erroring. */
+function setReps(i,v){
+  rows[i].reps = v;
+  const numeric = /^\s*\d+(\s*[-–]\s*\d+)?\s*$/.test(v);
+  if(v && !numeric && rows[i].unit !== "Text"){
+    rows[i].unit = "Text";
+    render();
+    toast("Unit set to Text");
+  }else if(v && numeric && rows[i].unit === "Text"){
+    rows[i].unit = "";
+    render();
+  }
+}
 function addRow(sec){ rows.push(blank(sec)); render(); }
 function rmRow(i){ rows.splice(i,1); render(); }
 /** Mobility first, then strength — the same order the client sees. */

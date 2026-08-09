@@ -168,6 +168,13 @@
   .modal p{font-size:.9rem;color:var(--text-dim);line-height:1.55;margin-bottom:10px}
   .modal p b{color:var(--text);font-weight:500}
   .modal .save{margin-top:16px}
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    padding:11px 18px;border-radius:10px;font-size:.88rem;opacity:0;
+    pointer-events:none;transition:opacity .2s;z-index:30;max-width:88%;text-align:center;
+  }
+  .toast.on{opacity:1}
 </style>
 </head>
 <body>
@@ -278,17 +285,52 @@ async function load(){
   }
 }
 
-/* Refresh from the sheet without a page reload */
+/* Refresh from the sheet without a page reload.
+   Never move the client off the week they're looking at, and never wipe
+   numbers they're part way through typing. */
 async function refreshProgram(){
   const c = slug(); if(!c) return;
+  // don't yank the page around while they're filling something in
+  const a = document.activeElement;
+  if(a && (a.tagName === "INPUT" || a.tagName === "SELECT" || a.tagName === "TEXTAREA")) return;
+
+  const sel = document.getElementById("weekSelect");
+  const currentStart = (program && sel && program.weeks[+sel.value])
+    ? program.weeks[+sel.value].start : null;
+
   try{
     const r = await fetch(API_URL + "?action=program&fresh=1&client=" + encodeURIComponent(c));
     const data = await r.json();
     if(data.error) return;
+
+    const before = JSON.stringify(program && program.weeks);
     program = data;
     try{ localStorage.setItem("program:"+c, JSON.stringify({at:Date.now(), data:data})); }catch(e){}
-    init(null);
+    if(JSON.stringify(program.weeks) === before) return;   // nothing changed, don't re-render
+
+    // hold their place: find the same week by its start date
+    let keep = null;
+    if(currentStart){
+      const i = data.weeks.findIndex(w => w.start === currentStart);
+      if(i > -1) keep = i;
+    }
+    init(keep);
+    if(keep === null && sel) toast("Your program has been updated");
   }catch(e){}
+}
+
+let toastT;
+function toast(msg){
+  let el = document.getElementById("toast");
+  if(!el){
+    el = document.createElement("div");
+    el.id = "toast"; el.className = "toast";
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add("on");
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>el.classList.remove("on"), 3000);
 }
 
 function init(keepWeek){
@@ -601,10 +643,18 @@ function card(ex,wi){
       const oldBadge=titleRow.querySelector(".prog");
       if(oldBadge) titleRow.replaceChild(progBadge(ex,wi),oldBadge);
       btn.textContent="✓ Saved";
-      setTimeout(()=>{ fillInputs(); },1400);
       c.classList.toggle("done", sessionsDone(ex) >= ex.freqNum);
       renderAnalytics();
-      try{ localStorage.setItem("program:"+slug(), JSON.stringify(program)); }catch(e){}
+      try{ localStorage.setItem("program:"+slug(), JSON.stringify({at:Date.now(), data:program})); }catch(e){}
+      // move them on to the next session so it's obvious there's more to do
+      setTimeout(()=>{
+        const open = nextOpen();
+        if(open !== activeSession && !sessionComplete(ex, open)){
+          activeSession = open;
+          paintSessions();
+        }
+        fillInputs();
+      },1200);
     }catch(e){
       btn.disabled=false; btn.textContent="Mark complete";
       err.textContent="Couldn't save. Check your connection and try again.";
@@ -769,21 +819,27 @@ function closeModal(){document.getElementById("modal").classList.remove("open")}
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 window.addEventListener("hashchange",()=>location.reload());
 
-/* Pick up a newly published week without the client having to reload:
-   refresh when they come back to the app, and quietly every few minutes. */
+/* Pick up a newly published week without the client having to reload.
+   iOS suspends timers in a backgrounded PWA, so the visibility and focus
+   handlers do the real work — the interval is just a safety net. */
 let lastSync = Date.now();
-document.addEventListener("visibilitychange", ()=>{
-  if(document.visibilityState === "visible" && Date.now() - lastSync > 30000){
-    lastSync = Date.now();
-    refreshProgram();
-  }
+function maybeSync(minGap){
+  if(document.visibilityState === "hidden") return;
+  if(Date.now() - lastSync < minGap) return;
+  lastSync = Date.now();
+  refreshProgram();
+}
+document.addEventListener("visibilitychange", ()=>maybeSync(5000));
+window.addEventListener("focus",       ()=>maybeSync(5000));
+window.addEventListener("pageshow",    ()=>maybeSync(5000));
+document.addEventListener("resume",    ()=>maybeSync(5000));
+setInterval(()=>maybeSync(90000), 90000);
+
+// tapping the header re-checks, for anyone who wants it now
+document.querySelector(".titlebar").addEventListener("click", e=>{
+  if(e.target.closest(".info-btn")) return;
+  lastSync = 0; maybeSync(0);
 });
-window.addEventListener("focus", ()=>{
-  if(Date.now() - lastSync > 30000){ lastSync = Date.now(); refreshProgram(); }
-});
-setInterval(()=>{
-  if(document.visibilityState === "visible"){ lastSync = Date.now(); refreshProgram(); }
-}, 300000);
 
 load();
 </script>
