@@ -158,6 +158,27 @@
   #login .modal{max-width:340px}
   #app{display:none}
   .empty{color:var(--text-dim);font-size:.9rem;padding:26px 0}
+  /* repeat-weekly toggle, shown only when the range spans more than a week */
+  .repeat{
+    display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);
+    align-items:flex-start;gap:12px;
+  }
+  .repeat.on{display:flex}
+  .repeat-text{font-size:.88rem;line-height:1.45}
+  .repeat-sub{color:var(--text-dim);font-size:.8rem;margin-top:3px}
+  .switch{position:relative;display:inline-block;flex-shrink:0;cursor:pointer;padding-top:2px}
+  .switch input{position:absolute;opacity:0;width:0;height:0}
+  .switch .track{
+    display:block;width:38px;height:22px;border-radius:11px;
+    background:var(--bg);border:1px solid var(--border);transition:background .15s,border-color .15s;
+  }
+  .switch .knob{
+    display:block;width:16px;height:16px;border-radius:50%;background:var(--text-dim);
+    margin:2px 0 0 2px;transition:transform .15s,background .15s;
+  }
+  .switch input:checked ~ .track{background:#2c4a39;border-color:#3a5a46}
+  .switch input:checked ~ .track .knob{transform:translateX(16px);background:var(--green)}
+  .switch input:focus-visible ~ .track{border-color:var(--accent)}
   .secthead{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
   .secthead h3{font-size:.95rem;font-weight:600}
   .opt{font-size:.72rem;color:var(--text-dim)}
@@ -271,6 +292,7 @@
       <div><label class="f">Due date</label>
         <input type="text" id="wkEnd" value="–" class="dateish"
           onfocus="asDate(this)" onchange="datePicked(this)" onblur="asText(this)"></div>
+      <!-- appears only when the range covers more than one week -->
       <div>
         <label class="f">Times per week</label>
         <select id="wkFreq" onchange="syncFreq()">
@@ -278,6 +300,17 @@
           <option>1x</option><option>2x</option><option>3x</option>
           <option>4x</option><option>5x</option><option>Daily</option><option>As needed</option>
         </select>
+      </div>
+    </div>
+
+    <div class="repeat" id="repeatBox">
+      <label class="switch">
+        <input type="checkbox" id="wkRepeat" checked onchange="updateSpan()">
+        <span class="track"><span class="knob"></span></span>
+      </label>
+      <div class="repeat-text">
+        <div id="spanLine"></div>
+        <div class="repeat-sub" id="spanSub"></div>
       </div>
     </div>
   </div>
@@ -588,6 +621,48 @@ function asText(el){
 function datePicked(el){
   el.dataset.iso = el.value || "";
   el.blur();
+  updateSpan();
+}
+
+/* ---- repeating a block across several weeks ---- */
+const MAX_WEEKS = 12;
+
+/** Mirrors weekSchedule() in Code.gs — rounds up, caps at MAX_WEEKS. */
+function weekCount(startIso, endIso){
+  if(!startIso || !endIso) return 1;
+  const s = new Date(startIso), e = new Date(endIso);
+  const days = Math.round((e - s) / 86400000) + 1;
+  if(days < 1) return 1;
+  return Math.min(MAX_WEEKS, Math.max(1, Math.ceil(days / 7)));
+}
+
+/** Show the toggle and describe what will be written. */
+function updateSpan(){
+  const start = dateVal("wkStart"), end = dateVal("wkEnd");
+  const box = document.getElementById("repeatBox");
+  const n = weekCount(start, end);
+
+  if(!start || !end || n < 2){ box.classList.remove("on"); return; }
+  box.classList.add("on");
+
+  const repeat = document.getElementById("wkRepeat").checked;
+  const exCount = rows.filter(r=>r.ex).length;
+  const capped = Math.round((new Date(end) - new Date(start))/86400000 + 1) > MAX_WEEKS*7;
+
+  document.getElementById("spanLine").innerHTML = repeat
+    ? 'Spans <b>'+n+' weeks</b> — exercises repeat each week'
+    : 'Spans <b>'+n+' weeks</b> — saving as one block';
+
+  let sub = "";
+  if(repeat){
+    sub = exCount
+      ? exCount+' exercise'+(exCount===1?'':'s')+' × '+n+' weeks = '+(exCount*n)+' rows'
+      : 'Add exercises to see how many rows will be written';
+    if(capped) sub += ' · capped at '+MAX_WEEKS+' weeks';
+  }else{
+    sub = 'One week block covering the whole range';
+  }
+  document.getElementById("spanSub").textContent = sub;
 }
 function dateVal(id){
   const el = document.getElementById(id);
@@ -596,6 +671,8 @@ function dateVal(id){
 function clearDate(id){
   const el = document.getElementById(id);
   el.dataset.iso = ""; el.type = "text"; el.value = "–";
+  const box = document.getElementById("repeatBox");
+  if(box) box.classList.remove("on");
 }
 
 /* ---------------- week builder ---------------- */
@@ -654,6 +731,7 @@ function render(){
   document.getElementById("exListStrength").innerHTML =
     str.length ? str.join("") : '<div class="empty" style="padding:12px 0">None added.</div>';
   wireDrag();
+  updateSpan();   // row count feeds the "x weeks = n rows" line
 }
 function setF(i,k,v){ rows[i][k]=v; }
 
@@ -773,9 +851,18 @@ async function saveWeek(){
   });
   if(local.length){ showProblems(local); return; }
 
+  const repeat = document.getElementById("wkRepeat").checked;
+  const weeks = repeat ? weekCount(start, end) : 1;
+  if(weeks > 1 && !confirm(
+      "This will write "+(valid.length*weeks)+" rows — "+valid.length+
+      " exercise"+(valid.length===1?"":"s")+" repeated across "+weeks+" weeks.\n\nGo ahead?")){
+    return;
+  }
+
   const btn=document.getElementById("saveWeekBtn");
   btn.disabled=true; btn.textContent="Saving…";
-  const res = await apiPost({action:"saveWeek", client:current.slug, start:start, end:end, rows:valid});
+  const res = await apiPost({action:"saveWeek", client:current.slug,
+                             start:start, end:end, rows:valid, repeat:repeat});
   btn.disabled=false; btn.textContent="Save week";
 
   // a partial save still wrote rows, so always resync before showing problems
@@ -791,9 +878,12 @@ async function saveWeek(){
     console.error("saveWeek failed:", res);
     return;
   }
-  toast("Saved — "+res.added+" rows added from row "+res.firstRow);
+  toast(res.weeks > 1
+    ? "Saved — "+res.added+" rows across "+res.weeks+" weeks, from row "+res.firstRow
+    : "Saved — "+res.added+" rows added from row "+res.firstRow);
   rows=[]; render();
   clearDate("wkStart"); clearDate("wkEnd");
+  document.getElementById("wkRepeat").checked = true;
   await loadClients();
   document.getElementById("tab2").classList.remove("hide");
   await refreshProgress();   // keep the Progress tab in step
