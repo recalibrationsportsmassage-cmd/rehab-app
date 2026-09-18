@@ -1,4 +1,4 @@
-const CACHE = "recal-v16";
+const CACHE = "recal-v17";
 const SHELL = ["./", "index.html", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {

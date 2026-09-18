@@ -179,6 +179,13 @@
   .switch input:checked ~ .track{background:#2c4a39;border-color:#3a5a46}
   .switch input:checked ~ .track .knob{transform:translateX(16px);background:var(--green)}
   .switch input:focus-visible ~ .track{border-color:var(--accent)}
+  .editbar{
+    display:none;margin-top:12px;background:var(--surface);
+    border:1px solid #5c4a27;border-left:3px solid var(--amber,#d9a441);
+    border-radius:8px;padding:11px 14px;font-size:.86rem;line-height:1.5;color:var(--text-dim);
+  }
+  .editbar.on{display:block}
+  .editbar b{color:var(--text)}
   .secthead{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
   .secthead h3{font-size:.95rem;font-weight:600}
   .opt{font-size:.72rem;color:var(--text-dim)}
@@ -280,9 +287,11 @@
     <h2 id="buildFor">New week</h2>
     <div class="row" style="gap:8px">
       <button class="btn ghost sm" onclick="copyClientUrl()">Copy client's URL</button>
-      <button class="btn ghost sm" onclick="copyLast()">Copy last week</button>
+      <button class="btn ghost sm" id="copyLastBtn" onclick="copyLast()">Copy last week</button>
+      <button class="btn ghost sm" id="exitEditBtn" style="display:none" onclick="exitEdit()">Cancel edit</button>
     </div>
   </div>
+  <div class="editbar" id="editBar"></div>
 
   <div class="card">
     <div class="grid3">
@@ -340,6 +349,7 @@
     <h2 id="progFor">Progress</h2>
     <div class="row" style="gap:10px">
       <select class="auto" id="progWeek" onchange="renderProgress()"></select>
+      <button class="btn ghost sm" onclick="editWeek()">Edit week</button>
       <button class="btn ghost sm" onclick="refreshProgress()">Refresh</button>
       <button class="btn ghost sm" onclick="window.print()">Download report</button>
     </div>
@@ -470,6 +480,7 @@ function clearClient(){
   current = null;
   progData = null;
   rows = [];
+  editing = null;
   detailOpen = {}; noteOpen = {};
   document.getElementById("tab1").classList.add("hide");
   document.getElementById("tab2").classList.add("hide");
@@ -477,6 +488,7 @@ function clearClient(){
   document.getElementById("wowBody").innerHTML = "";
   document.getElementById("chart").innerHTML = "";
   showProblems(null);
+  paintEditMode();
   renderClients();
 }
 function showClientTabs(c){
@@ -733,6 +745,70 @@ function render(){
   wireDrag();
   updateSpan();   // row count feeds the "x weeks = n rows" line
 }
+/* ---- editing a week that's already in the sheet ---- */
+let editing = null;   // {weekIndex, label, removed:[sheet rows]}
+
+function setDate(id, iso){
+  const el = document.getElementById(id);
+  el.dataset.iso = iso || "";
+  if(iso){ el.type = "date"; el.value = iso; }
+  else { el.type = "text"; el.value = "–"; }
+}
+
+function editWeek(){
+  if(!progData || !progData.weeks.length){ toast("No week to edit"); return; }
+  const wi = +document.getElementById("progWeek").value;
+  const wk = progData.weeks[wi];
+
+  editing = { weekIndex: wi, label: "Week "+(wi+1), removed: [] };
+
+  rows = wk.exercises.map(e=>({
+    row: e.row,                       // existing sheet row — never moves
+    done: e.done || 0,                // logged sessions, for the removal warning
+    sec: e.type==="mobility" ? "mobility" : "strength",
+    ex: e.name, sets:String(e.sets||""), target:e.target||"",
+    reps:e.reps||"", unit:e.unit||"", side:e.perSide?"Yes":"No",
+    freq:e.freq||"", note:""
+  }));
+
+  setDate("wkStart", wk.start);
+  setDate("wkEnd", wk.end);
+  document.getElementById("wkFreq").value = "";
+  showProblems(null);
+  paintEditMode();
+  render();
+  go(1, document.getElementById("tab1"));
+}
+
+function exitEdit(){
+  editing = null;
+  rows = [];
+  clearDate("wkStart"); clearDate("wkEnd");
+  showProblems(null);
+  paintEditMode();
+  render();
+  go(2, document.getElementById("tab2"));
+}
+
+function paintEditMode(){
+  const on = !!editing && !!current;
+  const bar = document.getElementById("editBar");
+  document.getElementById("buildFor").textContent =
+    on ? current.name + " — editing " + editing.label
+       : (current ? current.name + " — new week" : "New week");
+  document.getElementById("exitEditBtn").style.display = on ? "" : "none";
+  document.getElementById("copyLastBtn").style.display = on ? "none" : "";
+  document.getElementById("saveWeekBtn").textContent = on ? "Save changes" : "Save week";
+  bar.classList.toggle("on", on);
+  if(on){
+    bar.innerHTML = 'Editing <b>'+editing.label+'</b>. Changes update the existing rows. '+
+      'Exercises you add go to the end of this week; removed ones are cleared, not deleted, '+
+      'so logged sessions stay attached to the right exercise.';
+  }
+  // repeating only applies to a brand new week
+  if(on) document.getElementById("repeatBox").classList.remove("on");
+}
+
 function setF(i,k,v){ rows[i][k]=v; }
 
 /** Typing words in Reps implies the unit is Text — set it rather than erroring. */
@@ -749,7 +825,21 @@ function setReps(i,v){
   }
 }
 function addRow(sec){ rows.push(blank(sec)); render(); }
-function rmRow(i){ rows.splice(i,1); render(); }
+function rmRow(i){
+  const r = rows[i];
+  // an existing row is cleared in the sheet, not deleted — warn if it has data
+  if(editing && r.row){
+    if(r.done > 0 && !confirm(
+        r.ex+" has "+r.done+" logged session"+(r.done===1?"":"s")+
+        ".\n\nRemoving it takes the exercise out of their program. "+
+        "The logged sessions stay in the Log tab.\n\nRemove anyway?")){
+      return;
+    }
+    editing.removed.push(r.row);
+  }
+  rows.splice(i,1);
+  render();
+}
 /** Mobility first, then strength — the same order the client sees. */
 function orderedRows(){
   return rows.filter(r=>r.sec==="mobility").concat(rows.filter(r=>r.sec!=="mobility"));
@@ -851,19 +941,27 @@ async function saveWeek(){
   });
   if(local.length){ showProblems(local); return; }
 
-  const repeat = document.getElementById("wkRepeat").checked;
-  const weeks = repeat ? weekCount(start, end) : 1;
-  if(weeks > 1 && !confirm(
-      "This will write "+(valid.length*weeks)+" rows — "+valid.length+
-      " exercise"+(valid.length===1?"":"s")+" repeated across "+weeks+" weeks.\n\nGo ahead?")){
-    return;
-  }
-
   const btn=document.getElementById("saveWeekBtn");
-  btn.disabled=true; btn.textContent="Saving…";
-  const res = await apiPost({action:"saveWeek", client:current.slug,
-                             start:start, end:end, rows:valid, repeat:repeat});
-  btn.disabled=false; btn.textContent="Save week";
+  let res;
+
+  if(editing){
+    btn.disabled=true; btn.textContent="Saving…";
+    res = await apiPost({action:"updateWeek", client:current.slug,
+                         start:start, end:end, rows:valid, removed:editing.removed});
+    btn.disabled=false; btn.textContent="Save changes";
+  }else{
+    const repeat = document.getElementById("wkRepeat").checked;
+    const weeks = repeat ? weekCount(start, end) : 1;
+    if(weeks > 1 && !confirm(
+        "This will write "+(valid.length*weeks)+" rows — "+valid.length+
+        " exercise"+(valid.length===1?"":"s")+" repeated across "+weeks+" weeks.\n\nGo ahead?")){
+      return;
+    }
+    btn.disabled=true; btn.textContent="Saving…";
+    res = await apiPost({action:"saveWeek", client:current.slug,
+                         start:start, end:end, rows:valid, repeat:repeat});
+    btn.disabled=false; btn.textContent="Save week";
+  }
 
   // a partial save still wrote rows, so always resync before showing problems
   if(res.problems){
@@ -878,9 +976,19 @@ async function saveWeek(){
     console.error("saveWeek failed:", res);
     return;
   }
-  toast(res.weeks > 1
-    ? "Saved — "+res.added+" rows across "+res.weeks+" weeks, from row "+res.firstRow
-    : "Saved — "+res.added+" rows added from row "+res.firstRow);
+  if(editing){
+    const bits=[];
+    if(res.updated) bits.push(res.updated+" updated");
+    if(res.added)   bits.push(res.added+" added");
+    if(res.cleared) bits.push(res.cleared+" removed");
+    toast("Saved — "+(bits.join(", ") || "no changes"));
+    editing = null;
+    paintEditMode();
+  }else{
+    toast(res.weeks > 1
+      ? "Saved — "+res.added+" rows across "+res.weeks+" weeks, from row "+res.firstRow
+      : "Saved — "+res.added+" rows added from row "+res.firstRow);
+  }
   rows=[]; render();
   clearDate("wkStart"); clearDate("wkEnd");
   document.getElementById("wkRepeat").checked = true;
