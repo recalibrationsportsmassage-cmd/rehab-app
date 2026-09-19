@@ -692,28 +692,25 @@ function blank(sec){
   return {sec:sec||"strength",ex:"",sets:"",target:"",reps:"",unit:"",side:"",
           freq:document.getElementById("wkFreq").value||"",note:""};
 }
-/** Exercises offered in a section: that type, plus Both, plus any with no Type. */
+/** Every exercise can be prescribed either way, so both sections offer them all. */
 function libFor(sec){
-  const want = sec==="mobility" ? "Mobility" : "Strength";
-  return library.filter(l => l.type===want || l.type==="Both" || !l.type);
+  return library;
 }
 function rowHtml(r,i){
   const lib = library.find(l=>l.name===r.ex);
   const type = lib ? lib.type : "";
   const isMob = r.sec==="mobility";
   const targets = isMob ? ["Low","Mod"] : ["0 RIR","1 RIR","2 RIR","3 RIR"];
-  /* Label from the Matrix. "Both" shows which way you're using it here, since
-     the intensity you pick is what decides how the client sees it. */
+  /* The intensity decides how the client sees it, so the pill shows that
+     rather than the Matrix Type — which is now only a hint. */
   let typePill = '';
   if(r.ex){
-    if(type === "Both"){
-      typePill = '<span class="pill both" title="Can be either — the intensity you pick decides">'+
-                 'Both · as '+(isMob?"mobility":"strength")+'</span>';
-    }else if(type){
-      typePill = '<span class="pill '+(type==="Mobility"?"mob":"str")+'">'+type+'</span>';
-    }else{
-      typePill = '<span class="pill warn" title="Add a Type in the Exercise Matrix">Type not set</span>';
-    }
+    const willBe = /rir/i.test(r.target) ? "strength"
+                 : /^(low|mod)/i.test(r.target) ? "mobility"
+                 : (isMob ? "mobility" : "strength");
+    const hint = type ? " · Matrix: " + type : "";
+    typePill = '<span class="pill '+(willBe==="mobility"?"mob":"str")+'"'+
+               ' title="How the client sees it' + hint + '">as '+willBe+'</span>';
   }
   const opt=(v,cur)=>'<option'+(v===cur?' selected':'')+'>'+v+'</option>';
   return '<div class="exrow" draggable="false" data-i="'+i+'" data-sec="'+r.sec+'">'+
@@ -723,7 +720,7 @@ function rowHtml(r,i){
       libFor(r.sec).map(l=>opt(l.name,r.ex)).join("")+'</select></div>'+
     '<div><label class="f">Sets</label><select onchange="setF('+i+',\'sets\',this.value)">'+
       '<option value="">–</option>'+[1,2,3].map(s=>opt(String(s),String(r.sets))).join("")+'</select></div>'+
-    '<div><label class="f">Intensity</label><select onchange="setF('+i+',\'target\',this.value)">'+
+    '<div><label class="f">Intensity</label><select onchange="setTarget('+i+',this.value)">'+
       '<option value="">–</option>'+targets.map(t=>opt(t,r.target)).join("")+'</select></div>'+
     '<div><label class="f">Reps</label><input value="'+r.reps+'" placeholder="–" onchange="setReps('+i+',this.value)"></div>'+
     '<div><label class="f">Unit</label><select onchange="setF('+i+',\'unit\',this.value)">'+
@@ -810,6 +807,12 @@ function paintEditMode(){
 }
 
 function setF(i,k,v){ rows[i][k]=v; }
+
+/** Intensity decides how the client sees it, so redraw the pill when it changes. */
+function setTarget(i,v){
+  rows[i].target = v;
+  render();
+}
 
 /** Typing words in Reps implies the unit is Text — set it rather than erroring. */
 function setReps(i,v){
