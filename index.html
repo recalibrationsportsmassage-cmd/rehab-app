@@ -314,6 +314,41 @@ function pinClient(c){
 
 const fmt = d => new Date(d+"T00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});
 const fmtShort = d => new Date(d+"T00:00").toLocaleDateString("en-AU",{day:"numeric",month:"short"});
+
+/**
+ * Which week to open on: the one today falls inside.
+ *
+ * A program built several weeks ahead should start the client in week 1, not
+ * the last week. Before the program starts, open week 1; after it ends, the
+ * final week; in a gap between blocks, the next one coming up.
+ */
+function currentWeekIndex(){
+  if(!program || !program.weeks.length) return 0;
+  /* The phone's local date, not toISOString() — that returns UTC, which is the
+     previous day for most of an Australian morning and would open the wrong week. */
+  const n = new Date();
+  const p = x => String(x).padStart(2,"0");
+  const today = n.getFullYear()+"-"+p(n.getMonth()+1)+"-"+p(n.getDate());
+  const weeks = program.weeks;
+
+  for(let i=0;i<weeks.length;i++){
+    const w = weeks[i];
+    if(w.start <= today && (!w.end || today <= w.end)) return i;
+  }
+  for(let i=0;i<weeks.length;i++){
+    if(weeks[i].start > today) return i;      // next block to begin
+  }
+  return weeks.length - 1;                    // everything is in the past
+}
+
+/* Show the whole range, not just the start — otherwise the start date reads as
+   the deadline, especially when a block runs longer than seven days. */
+function weekLabel(w, i){
+  const n = "Week " + (i+1);
+  if(!w.start) return n;
+  if(!w.end || w.end === w.start) return n + " · " + fmtShort(w.start);
+  return n + " · " + fmtShort(w.start) + " – " + fmtShort(w.end);
+}
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 /* Show the last known program straight away, then quietly refresh in the
@@ -417,9 +452,9 @@ function init(keepWeek){
   }));
   const sel = document.getElementById("weekSelect");
   sel.innerHTML = program.weeks.map((w,i)=>
-    '<option value="'+i+'">Week '+(i+1)+' · '+fmtShort(w.start)+'</option>').join("");
+    '<option value="'+i+'">'+weekLabel(w,i)+'</option>').join("");
   sel.value = (keepWeek !== null && keepWeek !== undefined && keepWeek < program.weeks.length)
-    ? keepWeek : program.weeks.length - 1;
+    ? keepWeek : currentWeekIndex();
   document.getElementById("stateBox").style.display = "none";
   document.getElementById("controls").style.display = "block";
   document.getElementById("tabs").style.display = "flex";
@@ -477,7 +512,7 @@ function sessionComplete(ex, s){
     const v=rec.sets[String(i)];
     if(!v) return false;
     if(v[1]==="" || v[2]==="") return false;
-    if(ex.type!=="mobility" && v[0]==="") return false;
+    if(v[0]==="") return false;
   }
   return true;
 }
@@ -514,7 +549,6 @@ function avgPerSet(ex){
   return (hasLoad?vol:reps)/n;
 }
 function targetRir(ex){
-  if(ex.type==="mobility") return null;
   const m=/(\d+)\s*RIR/i.exec(ex.target||"");
   return m ? +m[1] : null;
 }
@@ -551,14 +585,13 @@ function progBadge(ex,wi){
 }
 
 function card(ex,wi){
-  const isMob = ex.type==="mobility";
   const c=document.createElement("div"); c.className="card";
 
   const head=document.createElement("div"); head.className="card-head";
   const titleRow=document.createElement("div"); titleRow.className="card-title";
   titleRow.innerHTML="<h2></h2>";
   titleRow.querySelector("h2").textContent=ex.name;
-  if(!isMob) titleRow.appendChild(progBadge(ex,wi));
+  titleRow.appendChild(progBadge(ex,wi));
   head.appendChild(titleRow);
 
   const t=document.createElement("div"); t.className="target";
@@ -632,10 +665,10 @@ function card(ex,wi){
   const sets=document.createElement("div"); sets.className="sets";
   if(ex.freqNum<=1) sets.style.borderTop="1px solid var(--border)";
   const grid=document.createElement("div");
-  grid.className="sets-grid "+(isMob?"cols2":"cols3");
+  grid.className="sets-grid cols3";
   const u=(ex.unit||"").toLowerCase();
   const repsHeading = u.indexOf("sec")===0 ? "Time (s)" : (u.indexOf("min")===0 ? "Time (min)" : "Reps");
-  grid.innerHTML='<div class="lbl"></div>'+(isMob?"":'<div class="lbl">Load (kg)</div>')+
+  grid.innerHTML='<div class="lbl"></div><div class="lbl">Load (kg)</div>'+
     '<div class="lbl">'+repsHeading+'</div><div class="lbl">Intensity</div>';
 
   const tRir=targetRir(ex);
@@ -643,19 +676,15 @@ function card(ex,wi){
   for(let s=0;s<ex.sets;s++){
     const num=document.createElement("div"); num.className="set-num"; num.textContent="Set "+(s+1);
     grid.appendChild(num);
-    let load=null;
-    if(!isMob){
-      load=document.createElement("input");
-      load.type="number"; load.inputMode="decimal"; load.placeholder="–"; load.min="0";
-      grid.appendChild(load);
-    }
+    const load=document.createElement("input");
+    load.type="number"; load.inputMode="decimal"; load.placeholder="–"; load.min="0";
+    grid.appendChild(load);
     const reps=document.createElement("input");
     reps.type="number"; reps.inputMode="numeric"; reps.placeholder="–"; reps.min="0";
     grid.appendChild(reps);
     const inten=document.createElement("select");
-    inten.innerHTML = isMob
-      ? '<option value="">–</option><option>Low</option><option>Mod</option>'
-      : '<option value="">–</option>'+[0,1,2,3,4,5].map(x=>'<option value="'+x+'">'+x+' RIR</option>').join("");
+    inten.innerHTML = '<option value="">–</option>'+
+      [0,1,2,3,4,5].map(x=>'<option value="'+x+'">'+x+' RIR</option>').join("");
     grid.appendChild(inten);
     inputs.push({load,reps,inten});
     if(tRir!==null){
@@ -697,8 +726,7 @@ function card(ex,wi){
     const missing=inputs.some(x=>
       x.reps.value==="" || x.inten.value==="" || (x.load && x.load.value===""));
     if(missing){
-      err.textContent = isMob ? "Fill in every box for each set first."
-                              : "Fill in load, reps and intensity for every set first.";
+      err.textContent = "Fill in load, reps and intensity for every set first.";
       err.classList.add("show"); return;
     }
     err.classList.remove("show");
@@ -748,7 +776,7 @@ function renderAnalytics(){
   const el = document.getElementById("analytics");
   if(!program || !program.weeks.length){ el.innerHTML='<div class="empty">Nothing to show yet.</div>'; return; }
 
-  if(anWeek === null || anWeek >= program.weeks.length) anWeek = program.weeks.length - 1;
+  if(anWeek === null || anWeek >= program.weeks.length) anWeek = currentWeekIndex();
   const wi = anWeek;
   const wk = program.weeks[wi];
 
@@ -771,7 +799,7 @@ function renderAnalytics(){
   });
   const chartable = Object.keys(seenIn).filter(n=>seenIn[n]>=2);
 
-  const isCurrent = wi === program.weeks.length - 1;
+  const isCurrent = wi === currentWeekIndex();
 
   // all-time totals, independent of the week filter below
   let allDone = 0;
@@ -798,7 +826,7 @@ function renderAnalytics(){
   html +=
     '<div class="an-divider"><span>By week</span></div>'+
     '<div class="controls"><select class="week" id="anWeekSel" onchange="pickAnWeek(this.value)">'+
-      program.weeks.map((w,i)=>'<option value="'+i+'"'+(i===wi?' selected':'')+'>Week '+(i+1)+' · '+fmtShort(w.start)+'</option>').join("")+
+      program.weeks.map((w,i)=>'<option value="'+i+'"'+(i===wi?' selected':'')+'>'+weekLabel(w,i)+'</option>').join("")+
     '</select></div>'+
     '<div class="an-card"><div class="stat single">'+
       '<div><div class="big">'+done+'<small>of '+target+' sessions '+(isCurrent?"this week":"that week")+'</small></div></div>'+
@@ -809,7 +837,7 @@ function renderAnalytics(){
     const n = ex.freqNum || 1;
     const d = sessionsDone(ex);
     let t = '<span class="trend flat">—</span>';
-    if(ex.type !== "mobility"){
+    {
       const bi = baseline[ex.name];
       if(bi === wi) t = '<span class="trend flat">First time</span>';
       else{

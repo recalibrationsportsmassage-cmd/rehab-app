@@ -179,6 +179,8 @@
   .switch input:checked ~ .track{background:#2c4a39;border-color:#3a5a46}
   .switch input:checked ~ .track .knob{transform:translateX(16px);background:var(--green)}
   .switch input:focus-visible ~ .track{border-color:var(--accent)}
+  .duenote{margin-top:10px;font-size:.85rem;color:var(--text-dim)}
+  .duenote strong{color:var(--text);font-weight:500}
   .editbar{
     display:none;margin-top:12px;background:var(--surface);
     border:1px solid #5c4a27;border-left:3px solid var(--amber,#d9a441);
@@ -325,15 +327,8 @@
   </div>
 
   <div class="card">
-    <div class="secthead"><h3>Mobility</h3><span class="opt">optional</span></div>
-    <div id="exListMobility"></div>
-    <button class="btn ghost sm" style="margin-top:14px" onclick="addRow('mobility')">+ Add mobility exercise</button>
-  </div>
-
-  <div class="card">
-    <div class="secthead"><h3>Strength</h3><span class="opt">optional</span></div>
-    <div id="exListStrength"></div>
-    <button class="btn ghost sm" style="margin-top:14px" onclick="addRow('strength')">+ Add strength exercise</button>
+    <div id="exList"></div>
+    <button class="btn ghost sm" style="margin-top:14px" onclick="addRow()">+ Add exercise</button>
   </div>
 
   <div id="saveProblems" class="problems"></div>
@@ -355,15 +350,17 @@
     </div>
   </div>
 
+  <div class="duenote" id="progDue"></div>
+
   <div class="card" id="progCard">
     <table class="fixed">
       <colgroup>
-        <col style="width:26%"><col style="width:10%"><col style="width:16%">
-        <col style="width:14%"><col style="width:11%"><col style="width:23%">
+        <col style="width:30%"><col style="width:18%">
+        <col style="width:15%"><col style="width:12%"><col style="width:25%">
       </colgroup>
       <thead>
         <tr>
-          <th>Exercise</th><th>Type</th><th>Adherence</th>
+          <th>Exercise</th><th>Adherence</th>
           <th>Avg per set</th><th>vs week 1</th><th>Client notes</th>
         </tr>
       </thead>
@@ -504,6 +501,21 @@ function fmtDue(d){
   if(!d) return "—";
   return new Date(d+"T00:00").toLocaleDateString("en-AU",{day:"numeric",month:"short"});
 }
+
+function fmtFull(d){
+  if(!d) return "—";
+  return new Date(d+"T00:00").toLocaleDateString("en-AU",
+    {weekday:"short", day:"numeric", month:"short"});
+}
+
+/* Label a week by its full range. Showing only the start date read as the due
+   date, which is misleading now a block can span more than seven days. */
+function weekLabel(w, i){
+  const n = "Week " + (i+1);
+  if(!w.start) return n;
+  if(!w.end || w.end === w.start) return n + " · " + fmtDue(w.start);
+  return n + " · " + fmtDue(w.start) + " – " + fmtDue(w.end);
+}
 async function loadClients(silent){
   const el=document.getElementById("clientList");
   const btn=document.getElementById("refreshClients");
@@ -554,7 +566,7 @@ async function openClient(slug){
   const c = clients.find(x=>x.slug===slug);
   if(!c) return;
   showClientTabs(c);
-  rows=[]; render();                 // both sections start empty
+  rows=[]; render();
   showProblems(null);
   const hasWeeks = c.weeks && c.weeks.length;
   // nothing to look at until a week exists — start them where the work is
@@ -562,6 +574,7 @@ async function openClient(slug){
   if(hasWeeks){
     go(2, document.getElementById("tab2"));
     await refreshProgress();
+    prefillStart();          // next week starts the day after the last one ends
   }else{
     go(1, document.getElementById("tab1"));
     progData = null;
@@ -575,7 +588,7 @@ async function refreshProgress(){
   const body=document.getElementById("progBody");
   // wipe first, so the previous client's numbers are never on screen
   progData = null;
-  body.innerHTML='<tr><td colspan="6" class="empty">Loading…</td></tr>';
+  body.innerHTML='<tr><td colspan="5" class="empty">Loading…</td></tr>';
   document.getElementById("wowBody").innerHTML='';
   document.getElementById("chart").innerHTML='';
   const res = await apiGet({action:"progress", client:forSlug, fresh:"1"});
@@ -583,12 +596,12 @@ async function refreshProgress(){
   if(!current || current.slug !== forSlug) return;
   progData = res;
   if(progData.error){
-    body.innerHTML='<tr><td colspan="6" class="empty">Couldn\'t load progress.</td></tr>';
+    body.innerHTML='<tr><td colspan="5" class="empty">Couldn\'t load progress.</td></tr>';
     return;
   }
   const sel=document.getElementById("progWeek");
   sel.innerHTML = progData.weeks.map((w,i)=>
-    '<option value="'+i+'">Week '+(i+1)+' · '+fmtDue(w.start)+'</option>').join("");
+    '<option value="'+i+'">'+weekLabel(w,i)+'</option>').join("");
   sel.value = Math.max(0, progData.weeks.length-1);
   renderProgress(); renderWowOptions(); renderWow();
 }
@@ -633,6 +646,34 @@ function asText(el){
 function datePicked(el){
   el.dataset.iso = el.value || "";
   el.blur();
+  updateSpan();
+}
+
+/** Latest due date across everything already prescribed for this client. */
+function lastProgramEnd(){
+  if(!progData || !progData.weeks || !progData.weeks.length) return null;
+  let latest = null;
+  progData.weeks.forEach(w=>{
+    const d = w.end || w.start;
+    if(d && (!latest || d > latest)) latest = d;
+  });
+  return latest;
+}
+
+/* Work in UTC start to finish. Parsing as local midnight and then formatting
+   via toISOString() shifts the date back a day in any timezone ahead of UTC —
+   which is every Australian one. */
+function addDays(iso, n){
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0,10);
+}
+
+/** A new week starts the day after the last one ends — overridable. */
+function prefillStart(){
+  const last = lastProgramEnd();
+  if(!last) return;
+  setDate("wkStart", addDays(last, 1));
   updateSpan();
 }
 
@@ -688,39 +729,21 @@ function clearDate(id){
 }
 
 /* ---------------- week builder ---------------- */
-function blank(sec){
-  return {sec:sec||"strength",ex:"",sets:"",target:"",reps:"",unit:"",side:"",
+function blank(){
+  return {ex:"",sets:"",target:"",reps:"",unit:"",side:"",
           freq:document.getElementById("wkFreq").value||"",note:""};
 }
-/** Every exercise can be prescribed either way, so both sections offer them all. */
-function libFor(sec){
-  return library;
-}
 function rowHtml(r,i){
-  const lib = library.find(l=>l.name===r.ex);
-  const type = lib ? lib.type : "";
-  const isMob = r.sec==="mobility";
-  const targets = isMob ? ["Low","Mod"] : ["0 RIR","1 RIR","2 RIR","3 RIR"];
-  /* The intensity decides how the client sees it, so the pill shows that
-     rather than the Matrix Type — which is now only a hint. */
-  let typePill = '';
-  if(r.ex){
-    const willBe = /rir/i.test(r.target) ? "strength"
-                 : /^(low|mod)/i.test(r.target) ? "mobility"
-                 : (isMob ? "mobility" : "strength");
-    const hint = type ? " · Matrix: " + type : "";
-    typePill = '<span class="pill '+(willBe==="mobility"?"mob":"str")+'"'+
-               ' title="How the client sees it' + hint + '">as '+willBe+'</span>';
-  }
   const opt=(v,cur)=>'<option'+(v===cur?' selected':'')+'>'+v+'</option>';
-  return '<div class="exrow" draggable="false" data-i="'+i+'" data-sec="'+r.sec+'">'+
+  const targets = ["0 RIR","1 RIR","2 RIR","3 RIR"];
+  return '<div class="exrow" draggable="false" data-i="'+i+'">'+
     '<div class="grip" title="Drag to reorder">⠿</div>'+
-    '<div><label class="f">Exercise '+typePill+'</label>'+
+    '<div><label class="f">Exercise</label>'+
       '<select onchange="setF('+i+',\'ex\',this.value);render()"><option value="">Select…</option>'+
-      libFor(r.sec).map(l=>opt(l.name,r.ex)).join("")+'</select></div>'+
+      library.map(l=>opt(l.name,r.ex)).join("")+'</select></div>'+
     '<div><label class="f">Sets</label><select onchange="setF('+i+',\'sets\',this.value)">'+
       '<option value="">–</option>'+[1,2,3].map(s=>opt(String(s),String(r.sets))).join("")+'</select></div>'+
-    '<div><label class="f">Intensity</label><select onchange="setTarget('+i+',this.value)">'+
+    '<div><label class="f">Intensity</label><select onchange="setF('+i+',\'target\',this.value)">'+
       '<option value="">–</option>'+targets.map(t=>opt(t,r.target)).join("")+'</select></div>'+
     '<div><label class="f">Reps</label><input value="'+r.reps+'" placeholder="–" onchange="setReps('+i+',this.value)"></div>'+
     '<div><label class="f">Unit</label><select onchange="setF('+i+',\'unit\',this.value)">'+
@@ -733,12 +756,9 @@ function rowHtml(r,i){
   '</div>';
 }
 function render(){
-  const mob=[], str=[];
-  rows.forEach((r,i)=>{ (r.sec==="mobility" ? mob : str).push(rowHtml(r,i)); });
-  document.getElementById("exListMobility").innerHTML =
-    mob.length ? mob.join("") : '<div class="empty" style="padding:12px 0">None added.</div>';
-  document.getElementById("exListStrength").innerHTML =
-    str.length ? str.join("") : '<div class="empty" style="padding:12px 0">None added.</div>';
+  const list = rows.map((r,i)=>rowHtml(r,i));
+  document.getElementById("exList").innerHTML =
+    list.length ? list.join("") : '<div class="empty" style="padding:12px 0">No exercises yet.</div>';
   wireDrag();
   updateSpan();   // row count feeds the "x weeks = n rows" line
 }
@@ -762,7 +782,6 @@ function editWeek(){
   rows = wk.exercises.map(e=>({
     row: e.row,                       // existing sheet row — never moves
     done: e.done || 0,                // logged sessions, for the removal warning
-    sec: e.type==="mobility" ? "mobility" : "strength",
     ex: e.name, sets:String(e.sets||""), target:e.target||"",
     reps:e.reps||"", unit:e.unit||"", side:e.perSide?"Yes":"No",
     freq:e.freq||"", note:""
@@ -827,7 +846,7 @@ function setReps(i,v){
     render();
   }
 }
-function addRow(sec){ rows.push(blank(sec)); render(); }
+function addRow(){ rows.push(blank()); render(); }
 function rmRow(i){
   const r = rows[i];
   // an existing row is cleared in the sheet, not deleted — warn if it has data
@@ -843,12 +862,10 @@ function rmRow(i){
   rows.splice(i,1);
   render();
 }
-/** Mobility first, then strength — the same order the client sees. */
-function orderedRows(){
-  return rows.filter(r=>r.sec==="mobility").concat(rows.filter(r=>r.sec!=="mobility"));
-}
+/** Saved in the order shown, which is the order the client sees. */
+function orderedRows(){ return rows.slice(); }
 
-/* ---- drag to reorder (within a section) ---- */
+/* ---- drag to reorder ---- */
 let dragFrom = null;
 function wireDrag(){
   document.querySelectorAll(".exrow").forEach(el=>{
@@ -870,7 +887,6 @@ function wireDrag(){
     });
     el.addEventListener("dragover", e=>{
       if(dragFrom === null) return;
-      if(rows[dragFrom].sec !== el.dataset.sec) return;   // don't cross sections
       e.preventDefault();
       el.classList.add("over");
     });
@@ -880,7 +896,6 @@ function wireDrag(){
       el.classList.remove("over");
       const to = +el.dataset.i;
       if(dragFrom === null || dragFrom === to) return;
-      if(rows[dragFrom].sec !== rows[to].sec) return;
       const moved = rows.splice(dragFrom, 1)[0];
       rows.splice(to, 0, moved);
       dragFrom = null;
@@ -905,7 +920,6 @@ async function copyLast(){
     if(!k || seen[k]) return false;
     seen[k] = 1; return true;
   }).map(e=>({
-    sec: e.type==="mobility" ? "mobility" : "strength",
     ex:e.name, sets:String(e.sets||""), target:e.target||"",
     reps:e.reps||"", unit:e.unit||"", side:e.perSide?"Yes":"No",
     freq:e.freq||"", note:""
@@ -933,8 +947,19 @@ async function saveWeek(){
   if(!end) local.push("No due date set");
   if(start && end && end < start) local.push("Due date is before the start date");
 
+  /* A new week can't start before the previous one finishes — overlapping
+     blocks would put the same dates in two weeks. Editing is exempt, since
+     you're changing a week that's already there. */
+  if(!editing && start){
+    const last = lastProgramEnd();
+    if(last && start <= last){
+      local.push("Starts on or before the last week ends ("+fmtFull(last)+
+                 "). Pick "+fmtFull(addDays(last,1))+" or later.");
+    }
+  }
+
   const valid = orderedRows().filter(r=>r.ex);
-  if(!valid.length) local.push("Add at least one exercise (mobility or strength)");
+  if(!valid.length) local.push("Add at least one exercise");
   valid.forEach(r=>{
     if(!r.sets) local.push(r.ex+": no sets selected");
     if(!r.target) local.push(r.ex+": no intensity selected");
@@ -995,6 +1020,7 @@ async function saveWeek(){
   rows=[]; render();
   clearDate("wkStart"); clearDate("wkEnd");
   document.getElementById("wkRepeat").checked = true;
+  prefillStart();
   await loadClients();
   document.getElementById("tab2").classList.remove("hide");
   await refreshProgress();   // keep the Progress tab in step
@@ -1030,18 +1056,24 @@ function baseWeekIndex(name){
   return 0;
 }
 function renderProgress(){
+  const due = document.getElementById("progDue");
   if(!progData || !progData.weeks.length){
-    document.getElementById("progBody").innerHTML='<tr><td colspan="6" class="empty">No weeks yet.</td></tr>';
+    document.getElementById("progBody").innerHTML='<tr><td colspan="5" class="empty">No weeks yet.</td></tr>';
+    due.innerHTML = "";
     return;
   }
   const wi=+document.getElementById("progWeek").value;
   const wk=progData.weeks[wi];
+
+  // spell the deadline out — the selector's dates were being read as the due date
+  due.innerHTML = wk.end
+    ? 'Starts <strong>'+fmtFull(wk.start)+'</strong> · complete by <strong>'+fmtFull(wk.end)+'</strong>'
+    : 'Starts <strong>'+fmtFull(wk.start)+'</strong>';
   document.getElementById("progBody").innerHTML = wk.exercises.map((p,idx)=>{
     const total=p.freqNum||1;
     const pct=Math.round((p.done||0)/total*100);
-    const isMob=p.type==="mobility";
     let trend='<span class="trend flat">—</span>';
-    if(!isMob){
+    {
       const bi=baseWeekIndex(p.name);
       if(bi===wi) trend='<span class="trend flat">Baseline</span>';
       else{
@@ -1067,7 +1099,7 @@ function renderProgress(){
 
     const open = !!detailOpen[idx];
     const detail = open
-      ? '<tr class="detailrow"><td colspan="6"><div class="detail">'+
+      ? '<tr class="detailrow"><td colspan="5"><div class="detail">'+
           '<span class="dlab">Prescribed</span>'+
           prescription(p).map(b=>'<span class="dpair"><i>'+b[0]+'</i>'+b[1]+'</span>').join("")+
         '</div></td></tr>'
@@ -1076,7 +1108,6 @@ function renderProgress(){
     return '<tr>'+
       '<td><button class="exname" onclick="toggleDetail('+idx+')">'+
         '<span class="caret">'+(open?"▾":"▸")+'</span>'+p.name+'</button></td>'+
-      '<td><span class="pill '+(isMob?"mob":"str")+'">'+(isMob?"Mobility":"Strength")+'</span></td>'+
       '<td><div class="bar"><span style="width:'+pct+'%"></span></div>'+
         '<div class="sesscount">'+(p.done||0)+' of '+total+' sessions</div></td>'+
       '<td>'+avg+'</td><td>'+trend+'</td>'+
