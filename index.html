@@ -553,6 +553,20 @@ function targetRir(ex){
   return m ? +m[1] : null;
 }
 
+/**
+ * Offer the client the same scale the target uses, so a Low target isn't
+ * answered with a RIR number. With no target set, offer both.
+ */
+function intensityOptions(ex){
+  const t = (ex.target||"").trim();
+  const blank = '<option value="">–</option>';
+  const rir = [0,1,2,3,4,5].map(x=>'<option value="'+x+'">'+x+' RIR</option>').join("");
+  const easy = '<option>Low</option><option>Mod</option>';
+  if(/rir/i.test(t))        return blank + rir;
+  if(/^(low|mod)/i.test(t)) return blank + easy;
+  return blank + rir + easy;
+}
+
 function renderWeek(){
   const wi=+document.getElementById("weekSelect").value;
   const wk=program.weeks[wi];
@@ -683,8 +697,7 @@ function card(ex,wi){
     reps.type="number"; reps.inputMode="numeric"; reps.placeholder="–"; reps.min="0";
     grid.appendChild(reps);
     const inten=document.createElement("select");
-    inten.innerHTML = '<option value="">–</option>'+
-      [0,1,2,3,4,5].map(x=>'<option value="'+x+'">'+x+' RIR</option>').join("");
+    inten.innerHTML = intensityOptions(ex);
     grid.appendChild(inten);
     inputs.push({load,reps,inten});
     if(tRir!==null){

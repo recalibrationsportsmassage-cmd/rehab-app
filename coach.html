@@ -735,7 +735,7 @@ function blank(){
 }
 function rowHtml(r,i){
   const opt=(v,cur)=>'<option'+(v===cur?' selected':'')+'>'+v+'</option>';
-  const targets = ["0 RIR","1 RIR","2 RIR","3 RIR"];
+  const targets = ["0 RIR","1 RIR","2 RIR","3 RIR","Low","Mod"];
   return '<div class="exrow" draggable="false" data-i="'+i+'">'+
     '<div class="grip" title="Drag to reorder">⠿</div>'+
     '<div><label class="f">Exercise</label>'+
